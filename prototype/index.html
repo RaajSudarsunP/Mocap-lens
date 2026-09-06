@@ -3,82 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MocapLens AI — P0 Desktop Functional Prototype</title>
+  <title>MocapLens AI — Material 3 Expressive 3D Motion Studio</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
 
-  <!-- Top Studio Header -->
+  <!-- Material 3 Expressive App Header -->
   <header>
     <div class="brand">
-      <div class="logo-icon">M</div>
-      <h1>MocapLens <span>AI</span></h1>
+      <div class="logo-pill">M</div>
+      <div class="brand-title">MocapLens <span>AI</span></div>
     </div>
-    <div class="header-badges">
-      <div class="badge"><div class="badge-dot"></div> P0 Desktop Prototype</div>
-      <div class="badge"><div class="badge-dot"></div> Candidate A3 Personalized Rig</div>
-      <div class="badge" id="status-fps">FPS: --</div>
+
+    <div class="header-actions">
+      <div class="status-pill" id="status-tracking">
+        <div class="status-dot"></div>
+        <span id="state-label">INITIALIZING...</span>
+      </div>
+      <div class="status-pill" id="status-fps">-- FPS</div>
     </div>
   </header>
 
-  <!-- Split Studio Workspace -->
-  <main class="studio-workspace">
+  <!-- Hero Acquisition Banner Indicator -->
+  <div class="acquisition-banner" id="acquisition-banner">
+    <span class="banner-icon" id="banner-icon">✨</span>
+    <span id="banner-text">ACQUISITION SEQUENCE: LOOK AT CAMERA TO START</span>
+  </div>
 
-    <!-- Left Viewport: Live Camera & 468 3D Mesh -->
-    <section class="viewport-card">
-      <div class="viewport-header">
-        <span>LIVE CAMERA & 468 3D LANDMARK MESH</span>
-        <span id="cam-resolution">1280x720</span>
+  <!-- Studio Hero Workspace Grid -->
+  <main class="studio-layout">
+
+    <!-- Left Card: Camera View & 468 Mesh Wireframe -->
+    <section class="m3-card">
+      <div class="card-label-bar">
+        <div class="expressive-chip">
+          <span>📷 LIVE FACE CAMERA</span>
+        </div>
+        <span style="font-size: 0.75rem; color: var(--m3-sys-color-on-surface-variant);" id="cam-resolution">1280x720</span>
       </div>
-      <div class="viewport-content">
+      <div class="viewport-wrapper">
         <video id="webcam-video" playsinline></video>
         <canvas id="camera-canvas"></canvas>
-
-        <div class="overlay-stats">
-          <div class="stat-row"><span>Face Detected:</span><span class="stat-value" id="stat-detected">NO</span></div>
-          <div class="stat-row"><span>Landmarks:</span><span class="stat-value" id="stat-landmarks">0 / 468</span></div>
-          <div class="stat-row"><span>Confidence:</span><span class="stat-value" id="stat-confidence">0.00</span></div>
-          <div class="stat-row"><span>Filter:</span><span class="stat-value">1€ Adaptive</span></div>
-        </div>
       </div>
     </section>
 
-    <!-- Right Viewport: Three.js 3D Avatar Render -->
-    <section class="viewport-card">
-      <div class="viewport-header">
-        <span>THREE.JS 3D AVATAR VIEWPORT</span>
-        <span id="avatar-status">Candidate A3 Ready</span>
+    <!-- Right Hero Card: 3D Avatar Viewport -->
+    <section class="m3-card m3-card-hero">
+      <div class="card-label-bar">
+        <div class="expressive-chip" style="color: var(--m3-sys-color-secondary);">
+          <span>🎭 3D AVATAR HERO VIEWPORT</span>
+        </div>
       </div>
-      <div class="viewport-content">
-        <div id="avatar-container"></div>
 
-        <div class="overlay-stats">
-          <div class="stat-row"><span>Pitch (Nod):</span><span class="stat-value" id="stat-pitch">0.0°</span></div>
-          <div class="stat-row"><span>Yaw (Turn):</span><span class="stat-value" id="stat-yaw">0.0°</span></div>
-          <div class="stat-row"><span>Roll (Tilt):</span><span class="stat-value" id="stat-roll">0.0°</span></div>
-          <div class="stat-row"><span>Jaw Open:</span><span class="stat-value" id="stat-jaw">0.00</span></div>
-          <div class="stat-row"><span>Blink Left:</span><span class="stat-value" id="stat-blink">0.00</span></div>
+      <!-- Expressive Visual Avatar Mode Selector -->
+      <div class="avatar-mode-selector">
+        <button class="mode-pill active" id="mode-a3">A3 Semi-Realistic</button>
+        <button class="mode-pill" id="mode-cyber">Cyber Stylized</button>
+        <button class="mode-pill" id="mode-wire">Wireframe Rig</button>
+      </div>
+
+      <div class="viewport-wrapper">
+        <div id="avatar-container"></div>
+      </div>
+
+      <!-- Technical Telemetry Overlay (Toggleable via Technical View Button) -->
+      <div class="technical-overlay" id="technical-overlay">
+        <div class="tech-header">⚙️ Real-Time Telemetry & Parameters</div>
+        <div class="tech-row"><span>Landmarks Extracted:</span><span class="tech-val" id="tech-landmarks">468 / 468 3D</span></div>
+        <div class="tech-row"><span>Tracking Confidence:</span><span class="tech-val" id="tech-confidence">0.98</span></div>
+        <div class="tech-row"><span>Filter:</span><span class="tech-val">1€ Adaptive (fc=1.0, β=0.005)</span></div>
+        <div class="tech-row"><span>6-DoF Pose (P/Y/R):</span><span class="tech-val" id="tech-pose">0.0° / 0.0° / 0.0°</span></div>
+        <div class="tech-row"><span>Expression Gain:</span><span class="tech-val" id="tech-gain-val">1.0x</span></div>
+        
+        <div class="tech-header" style="margin-top: 6px;">📊 Live Blendshape Telemetry (52 ARKit)</div>
+        <div class="blendshape-meter-group">
+          <div class="meter-row">
+            <div class="meter-label"><span>Jaw Open (Cat 17)</span><span id="val-jaw">0.00</span></div>
+            <div class="meter-track"><div class="meter-fill" id="bar-jaw"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label"><span>Blink Left (Cat 0)</span><span id="val-blink-l">0.00</span></div>
+            <div class="meter-track"><div class="meter-fill" id="bar-blink-l"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label"><span>Smile Left (Cat 23)</span><span id="val-smile-l">0.00</span></div>
+            <div class="meter-track"><div class="meter-fill" id="bar-smile-l"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label"><span>Brow Inner Up (Cat 43)</span><span id="val-brow">0.00</span></div>
+            <div class="meter-track"><div class="meter-fill" id="bar-brow"></div></div>
+          </div>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Bottom Studio Control Bar -->
-  <footer>
-    <div style="display: flex; gap: 12px;">
-      <button class="btn" id="btn-calibrate">🎯 Calibrate Neutral Pose</button>
-      <button class="btn" id="btn-personalize">✨ Personalize Avatar (Candidate A3)</button>
+  <!-- Floating Expressive Action Bar -->
+  <div class="floating-action-bar">
+    <button class="m3-btn" id="btn-calibrate">🎯 Calibrate Neutral</button>
+    <button class="m3-btn" id="btn-personalize">✨ Personalize (A3)</button>
+    
+    <div class="gain-control-widget">
+      <span>⚡ Gain</span>
+      <input type="range" min="0.5" max="2.5" step="0.1" value="1.0" class="gain-slider" id="gain-slider">
+      <span id="gain-label">1.0x</span>
     </div>
 
-    <div style="display: flex; gap: 12px;">
-      <button class="btn btn-primary" id="btn-record">🔴 Record Take</button>
-      <button class="btn" id="btn-export">💾 Export Take (.JSON)</button>
-    </div>
-  </footer>
+    <button class="m3-btn m3-btn-hero" id="btn-record">🔴 Record Take</button>
+    <button class="m3-btn" id="btn-export">💾 Export JSON</button>
+    <button class="m3-btn" id="btn-tech-toggle">⚙️ Technical View</button>
+  </div>
 
   <!-- Application Logic Modules -->
   <script type="module">
@@ -96,22 +131,40 @@
     const canvas = document.getElementById('camera-canvas');
     const avatarContainer = document.getElementById('avatar-container');
 
-    const statDetected = document.getElementById('stat-detected');
-    const statLandmarks = document.getElementById('stat-landmarks');
-    const statConfidence = document.getElementById('stat-confidence');
-    const statFps = document.getElementById('status-fps');
-    const statPitch = document.getElementById('stat-pitch');
-    const statYaw = document.getElementById('stat-yaw');
-    const statRoll = document.getElementById('stat-roll');
-    const statJaw = document.getElementById('stat-jaw');
-    const statBlink = document.getElementById('stat-blink');
+    const stateLabel = document.getElementById('state-label');
+    const statusFps = document.getElementById('status-fps');
+    const bannerIcon = document.getElementById('banner-icon');
+    const bannerText = document.getElementById('banner-text');
+    const technicalOverlay = document.getElementById('technical-overlay');
+
+    const techLandmarks = document.getElementById('tech-landmarks');
+    const techConfidence = document.getElementById('tech-confidence');
+    const techPose = document.getElementById('tech-pose');
+    const techGainVal = document.getElementById('tech-gain-val');
+
+    const barJaw = document.getElementById('bar-jaw');
+    const valJaw = document.getElementById('val-jaw');
+    const barBlinkL = document.getElementById('bar-blink-l');
+    const valBlinkL = document.getElementById('val-blink-l');
+    const barSmileL = document.getElementById('bar-smile-l');
+    const valSmileL = document.getElementById('val-smile-l');
+    const barBrow = document.getElementById('bar-brow');
+    const valBrow = document.getElementById('val-brow');
 
     const btnCalibrate = document.getElementById('btn-calibrate');
     const btnPersonalize = document.getElementById('btn-personalize');
     const btnRecord = document.getElementById('btn-record');
     const btnExport = document.getElementById('btn-export');
+    const btnTechToggle = document.getElementById('btn-tech-toggle');
 
-    // Modules Initialization
+    const gainSlider = document.getElementById('gain-slider');
+    const gainLabel = document.getElementById('gain-label');
+
+    const modeA3 = document.getElementById('mode-a3');
+    const modeCyber = document.getElementById('mode-cyber');
+    const modeWire = document.getElementById('mode-wire');
+
+    // Modules
     const cameraManager = new CameraManager(video, canvas);
     const landmarkerManager = new FaceLandmarkerManager();
     const blendshapeProcessor = new BlendshapeProcessor();
@@ -131,28 +184,38 @@
     let lastFpsCalc = Date.now();
     let latestLandmarks = null;
     let latestBlendshapes = null;
+    let isTechnicalMode = false;
+    let expressionGain = 1.0;
+    let acquisitionState = "IDLE"; // IDLE -> FACE DETECTED -> CALIBRATING -> MOTION READY -> LIVE
 
     async function initStudio() {
-      console.log("MocapLens: Initializing P0 Studio...");
+      console.log("MocapLens: Initializing Material 3 Expressive Studio...");
       
-      // Initialize Three.js WebGL Avatar Viewport
       avatarViewer.initialize();
-
-      // Initialize MediaPipe Tasks Vision
       const ready = await landmarkerManager.initialize();
       if (!ready) {
-        alert("Failed to initialize MediaPipe FaceLandmarker.");
+        bannerText.textContent = "ERROR: FAILD TO INITIALIZE MEDIAPIPE FACELANDMARKER";
         return;
       }
 
-      // Initialize Camera
       await cameraManager.initializeCamera();
 
-      // Event Listeners
+      // UI Handlers
+      gainSlider.addEventListener('input', (e) => {
+        expressionGain = parseFloat(e.target.value);
+        gainLabel.textContent = `${expressionGain.toFixed(1)}x`;
+        techGainVal.textContent = `${expressionGain.toFixed(1)}x`;
+      });
+
+      modeA3.addEventListener('click', () => setAvatarMode('a3'));
+      modeCyber.addEventListener('click', () => setAvatarMode('cyber'));
+      modeWire.addEventListener('click', () => setAvatarMode('wire'));
+
       btnCalibrate.addEventListener('click', () => {
         if (latestBlendshapes) {
           blendshapeProcessor.calibrateNeutralPose(latestBlendshapes);
-          alert("Neutral pose calibrated!");
+          acquisitionState = "MOTION READY";
+          updateAcquisitionUI("🎯 NEUTRAL POSE CALIBRATED (BASELINE SUBTRACTED) — READY FOR LIVE PERFORMANCE", "✨");
         }
       });
 
@@ -160,7 +223,7 @@
         if (latestLandmarks && avatarViewer.avatarMesh) {
           const props = avatarPersonalizer.extractUserFacialProportions(latestLandmarks);
           avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
-          alert(`Candidate A3 Avatar Personalized! IPD Ratio: ${props.ipdRatio.toFixed(2)}, Jaw Ratio: ${props.jawWidthRatio.toFixed(2)}`);
+          updateAcquisitionUI(`✨ PERSONALIZED AVATAR (CANDIDATE A3) DEFORMED — IPD: ${props.ipdRatio.toFixed(2)}`, "🎭");
         } else {
           alert("Position your face in front of the camera first.");
         }
@@ -170,13 +233,15 @@
         if (timelineRecorder.isRecording) {
           timelineRecorder.stopRecording();
           btnRecord.textContent = "🔴 Record Take";
-          btnRecord.classList.remove("btn-danger");
-          btnRecord.classList.add("btn-primary");
+          btnRecord.classList.remove("m3-btn-danger");
+          btnRecord.classList.add("m3-btn-hero");
+          updateAcquisitionUI("STATE: TAKE RECORDED — READY FOR EXPORT", "💾");
         } else {
           timelineRecorder.startRecording();
           btnRecord.textContent = "⏹️ Stop Recording";
-          btnRecord.classList.remove("btn-primary");
-          btnRecord.classList.add("btn-danger");
+          btnRecord.classList.remove("m3-btn-hero");
+          btnRecord.classList.add("m3-btn-danger");
+          updateAcquisitionUI("STATE: RECORDING LIVE FACIAL MOTION TAKE...", "🔴");
         }
       });
 
@@ -184,44 +249,70 @@
         timelineRecorder.exportTakeAsJSON();
       });
 
-      // Start Main Loop
+      btnTechToggle.addEventListener('click', () => {
+        isTechnicalMode = !isTechnicalMode;
+        if (isTechnicalMode) {
+          technicalOverlay.classList.add('visible');
+          btnTechToggle.style.borderColor = "var(--m3-sys-color-primary)";
+        } else {
+          technicalOverlay.classList.remove('visible');
+          btnTechToggle.style.borderColor = "transparent";
+        }
+      });
+
       requestAnimationFrame(renderLoop);
     }
 
-    function renderLoop() {
-      // 1. Draw raw camera frame
-      cameraManager.drawFrame();
+    function setAvatarMode(mode) {
+      [modeA3, modeCyber, modeWire].forEach(b => b.classList.remove('active'));
+      if (mode === 'a3') {
+        modeA3.classList.add('active');
+        if (avatarViewer.avatarMesh) avatarViewer.avatarMesh.material.color.setHex(0xe0d0c0);
+      } else if (mode === 'cyber') {
+        modeCyber.classList.add('active');
+        if (avatarViewer.avatarMesh) avatarViewer.avatarMesh.material.color.setHex(0x00f0ff);
+      } else if (mode === 'wire') {
+        modeWire.classList.add('active');
+        if (avatarViewer.avatarMesh) avatarViewer.avatarMesh.material.color.setHex(0x8b5cf6);
+      }
+    }
 
-      // 2. Perform MediaPipe Face Landmarker detection
+    function updateAcquisitionUI(text, icon = "✨") {
+      bannerText.textContent = text;
+      bannerIcon.textContent = icon;
+    }
+
+    function renderLoop() {
+      cameraManager.drawFrame();
       const results = landmarkerManager.detectVideoFrame(video);
 
       if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
         const landmarks = results.faceLandmarks[0];
         latestLandmarks = landmarks;
-        statDetected.textContent = "YES";
-        statDetected.style.color = "var(--accent-green)";
-        statLandmarks.textContent = `${landmarks.length} / 468`;
 
-        // Draw 3D wireframe mesh overlay
+        if (acquisitionState === "IDLE") {
+          acquisitionState = "FACE DETECTED";
+          updateAcquisitionUI("FACE ACQUIRED: 468 3D LANDMARKS DETECTED", "🔍");
+          stateLabel.textContent = "FACE ACQUIRED";
+        }
+
         landmarkerManager.drawLandmarks(cameraManager.ctx, landmarks, canvas.width, canvas.height);
 
-        // Extract and process 52 blendshapes
         const rawBlendshapes = blendshapeProcessor.processBlendshapes(
           results.faceBlendshapes ? results.faceBlendshapes[0].categories : null,
           landmarks
         );
         latestBlendshapes = rawBlendshapes;
 
-        // Apply One Euro Filter smoothing to blendshapes
-        const smoothedBlendshapes = blendshapeFilter.filter(rawBlendshapes);
+        // Apply Expression Gain Scaling
+        const scaledBlendshapes = rawBlendshapes.map(val => Math.min(1.0, val * expressionGain));
+        const smoothedBlendshapes = blendshapeFilter.filter(scaledBlendshapes);
 
-        // Solve 6-DoF Head Pose Quaternion
         const pose = headPoseSolver.solvePose(
           landmarks,
           results.facialTransformationMatrixes ? results.facialTransformationMatrixes[0].data : null
         );
 
-        // Filter Quaternion Components
         const filteredQuat = [
           quatFilterW.filter(pose.quaternion[0]),
           quatFilterX.filter(pose.quaternion[1]),
@@ -229,32 +320,43 @@
           quatFilterZ.filter(pose.quaternion[3])
         ];
 
-        // Update Three.js 3D Avatar Viewport
         avatarViewer.updateAvatar(smoothedBlendshapes, filteredQuat, pose.translation);
-
-        // Record frame if recording
         timelineRecorder.recordFrame(smoothedBlendshapes, filteredQuat, pose.translation);
 
-        // Update UI Telemetry
-        const radToDeg = 180 / Math.PI;
-        statPitch.textContent = `${(pose.euler.pitch * radToDeg).toFixed(1)}°`;
-        statYaw.textContent = `${(pose.euler.yaw * radToDeg).toFixed(1)}°`;
-        statRoll.textContent = `${(pose.euler.roll * radToDeg).toFixed(1)}°`;
-        statJaw.textContent = smoothedBlendshapes[17].toFixed(2); // jawOpen
-        statBlink.textContent = smoothedBlendshapes[0].toFixed(2); // eyeBlinkLeft
-        statConfidence.textContent = "0.98";
+        if (isTechnicalMode) {
+          const radToDeg = 180 / Math.PI;
+          techPose.textContent = `${(pose.euler.pitch * radToDeg).toFixed(1)}° / ${(pose.euler.yaw * radToDeg).toFixed(1)}° / ${(pose.euler.roll * radToDeg).toFixed(1)}°`;
+          
+          const jawVal = smoothedBlendshapes[17] || 0;
+          const blinkLVal = smoothedBlendshapes[0] || 0;
+          const smileLVal = smoothedBlendshapes[23] || 0;
+          const browVal = smoothedBlendshapes[43] || 0;
+
+          valJaw.textContent = jawVal.toFixed(2);
+          barJaw.style.width = `${Math.min(100, jawVal * 100)}%`;
+
+          valBlinkL.textContent = blinkLVal.toFixed(2);
+          barBlinkL.style.width = `${Math.min(100, blinkLVal * 100)}%`;
+
+          valSmileL.textContent = smileLVal.toFixed(2);
+          barSmileL.style.width = `${Math.min(100, smileLVal * 100)}%`;
+
+          valBrow.textContent = browVal.toFixed(2);
+          barBrow.style.width = `${Math.min(100, browVal * 100)}%`;
+        }
 
       } else {
-        statDetected.textContent = "NO";
-        statDetected.style.color = "#ff0055";
-        statLandmarks.textContent = "0 / 468";
+        if (acquisitionState !== "IDLE") {
+          acquisitionState = "IDLE";
+          stateLabel.textContent = "SEARCHING FOR FACE...";
+          updateAcquisitionUI("ACQUISITION SEQUENCE: LOOK AT CAMERA TO START", "✨");
+        }
       }
 
-      // FPS Calculation
       frameCount++;
       const now = Date.now();
       if (now - lastFpsCalc >= 1000) {
-        statFps.textContent = `FPS: ${frameCount}`;
+        statusFps.textContent = `${frameCount} FPS`;
         frameCount = 0;
         lastFpsCalc = now;
       }
@@ -262,7 +364,6 @@
       requestAnimationFrame(renderLoop);
     }
 
-    // Initialize on DOM Ready
     window.addEventListener('DOMContentLoaded', initStudio);
   </script>
 </body>
