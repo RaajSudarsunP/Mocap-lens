@@ -17,15 +17,15 @@ Track E evaluates mobile inference engines, model quantization strategies, hardw
 
 ## 2. Hardware Acceleration Delegate Strategy [DESIGN PROPOSAL]
 
-1. **Primary Acceleration Target**: Qualcomm Hexagon NPU / Adreno GPU via LiteRT GPU/NPU Delegate `[DESIGN PROPOSAL - EXPERIMENTAL VALIDATION REQUIRED IN E02]`.
-2. **Fallback Execution Sequence**:
-   ```text
-   Snapdragon Hexagon NPU Delegate (NNAPI / QNN)
-         ↓ (if operator unsupported)
-   Adreno GPU Delegate (Vulkan / OpenGL ES 3.0)
-         ↓ (if GPU delegate initialization fails)
-   Multi-Threaded ARM Neon CPU (4 Threads)
-   ```
+- **NPU Acceleration Statement [AUDIT CORRECTION]**: Qualcomm NPU / AI Engine Direct is the preferred acceleration target; actual delegate availability, operator compatibility, and latency require E02 validation on the selected iQOO device `[UNVERIFIED - E02 BENCHMARK REQUIRED]`.
+- **Fallback Execution Sequence**:
+  ```text
+  Qualcomm NPU / AI Engine Direct Delegate (NNAPI / QNN)
+        ↓ (if operator or delegate unavailable)
+  Adreno GPU Delegate (Vulkan / OpenGL ES 3.0)
+        ↓ (if GPU delegate initialization fails)
+  Multi-Threaded ARM Neon CPU (4 Threads)
+  ```
 
 ---
 
