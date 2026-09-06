@@ -1,6 +1,6 @@
-# Stage 0 — Knowledge Validation & Teach-Back Assessment
+# Stage 1 — Knowledge Validation & Teach-Back Assessment
 
-This document provides a comprehensive technical validation of the core computer vision, 3D geometry, mobile AI acceleration, and real-time streaming principles underlying MocapLens AI. Each question is analyzed using the required four-part teach-back structure: **CONCEPT**, **EXPLANATION**, **MOCAPLENs APPLICATION**, and **ENGINEERING CONSEQUENCE**.
+This document provides a comprehensive technical validation of the core computer vision, 3D geometry, mobile acceleration, and telemetry streaming principles underlying MocapLens AI. Each question is analyzed using the required four-part teach-back structure: **CONCEPT**, **EXPLANATION**, **MOCAPLENs APPLICATION**, and **ENGINEERING CONSEQUENCE**.
 
 ---
 
@@ -10,12 +10,12 @@ This document provides a comprehensive technical validation of the core computer
 - **EXPLANATION**:
   - *Face Detection*: Locates the bounding box rectangle $[x_{min}, y_{min}, w, h]$ containing a face within an image frame.
   - *Facial Landmarks*: Pinpoints key structural points (e.g. 5-point, 68-point) marking anatomical features (eyes, nose tip, chin).
-  - *Face Mesh*: Dense 3D surface topology consisting of hundreds of spatial vertices (e.g. MediaPipe's 468/478 points) representing complete facial geometry.
+  - *Face Mesh*: Dense 3D surface topology consisting of hundreds of spatial vertices (e.g. MediaPipe's 468/478 points) representing face geometry.
   - *Blendshapes*: Normalized semantic coefficients (0.0 to 1.0) quantifying muscle action intensities (e.g. `jawOpen`, `eyeBlinkLeft`, `mouthSmileRight`).
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI executes face detection initially to isolate the region of interest (ROI), regresses the 468-point 3D Face Mesh on the Snapdragon NPU, and maps mesh deformations to 52 standard ARKit blendshape weights.
+  MocapLens AI proposes using MediaPipe FaceLandmarker to isolate the region of interest (ROI), extract a 468-point 3D Face Mesh, and regress blendshape weights using an Option B 109.9K Res-MLP regressor `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Attempting to run full face detection on every frame wastes NPU compute cycles. MocapLens AI uses a tracking loop: face detection runs once to initialize, followed by light landmark tracking across frames. Re-detection is triggered only if landmark confidence drops below threshold $\tau = 0.5$.
+  Attempting to run full face detection on every frame wastes compute cycles. MocapLens AI proposes a tracking loop: face detection runs once to initialize, followed by light landmark tracking across frames. Re-detection is triggered only if tracking confidence drops below threshold $\tau = 0.5$.
 
 ---
 
@@ -23,11 +23,11 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Geometric point clouds vs. semantic morph target deformations.
 - **EXPLANATION**:
-  Raw 3D landmarks represent point locations in camera space. They do not account for individual user facial proportions (e.g., larger jaw vs. smaller jaw), lack character-specific mesh topology mapping, and suffer from monocular noise and jitter. Furthermore, 3D avatars are rigged using bone hierarchies and morph targets, not point clouds.
+  Raw 3D landmarks represent point locations in camera space. They do not account for individual user facial proportions, lack character-specific mesh topology mapping, and suffer from monocular noise. Furthermore, 3D avatars are rigged using bone hierarchies and morph targets, not raw point clouds.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI converts raw 3D landmark displacements into standard ARKit blendshape weight vectors $[w_1, w_2, \dots, w_{52}]$ and head pose quaternions $q_{head}$.
+  MocapLens AI converts 3D landmark displacements into a canonical 52 blendshape weight vector $[w_1, w_2, \dots, w_{52}]$ and head pose quaternion $q_{head}$ `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Directly mapping raw landmark positions to 3D avatar vertices requires matching exact mesh vertex topology between the human face and avatar model. By regressing blendshapes, MocapLens AI abstracts facial motion into topology-agnostic 52-float parameter arrays that drive any 3D avatar (Ready Player Me, Mixamo, Unreal Engine Live Link).
+  Directly mapping raw landmark positions to 3D avatar vertices requires matching exact mesh vertex topology. By regressing blendshapes, MocapLens AI abstracts facial motion into topology-agnostic parameter arrays that drive compatible 3D avatars (Candidate A3 Personalized Avatar) `[DESIGN PROPOSAL]`.
 
 ---
 
@@ -35,12 +35,12 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Anatomical muscle measurement (FACS) vs. graphics mesh deformation control.
 - **EXPLANATION**:
-  - *Action Unit (AU)*: Defined by Ekman's Facial Action Coding System (FACS) to describe physical muscle contraction (e.g. AU12 = Zygomaticus major contraction). It is an analytical/psychological representation.
-  - *Blendshape Coefficient*: Scalar weight $w_i \in [0.0, 1.0]$ in computer graphics that scales a 3D vertex displacement delta vector $\Delta B_i = B_i - B_0$ relative to a neutral pose $B_0$.
+  - *Action Unit (AU)*: Defined by Ekman's Facial Action Coding System (FACS) to describe physical muscle contraction (e.g. AU12 Zygomaticus major contraction).
+  - *Blendshape Coefficient*: Scalar weight $w_i \in [0.0, 1.0]$ in computer graphics scaling a 3D vertex displacement delta vector $\Delta B_i = B_i - B_0$ relative to a neutral pose $B_0$.
 - **MOCAPLENs APPLICATION**:
-  While MocapLens AI bases its facial expression taxonomy on FACS muscle movements, it outputs 52 ARKit-standard blendshape coefficients directly consumable by WebGL/Three.js rendering engines.
+  MocapLens AI proposes outputting canonical 52 ARKit blendshape coefficients directly consumable by WebGL/Three.js rendering engines `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Action Units require an additional translation layer to calculate vertex movements on 3D meshes. Using blendshapes allows direct array binding to `mesh.morphTargetInfluences` in Three.js, eliminating runtime remapping overhead.
+  Action Units require an additional matrix translation layer to calculate vertex movements on 3D meshes. Using blendshapes allows direct array binding to `mesh.morphTargetInfluences` in Three.js, eliminating runtime remapping overhead.
 
 ---
 
@@ -48,11 +48,11 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Noise suppression in continuous time-series sensor predictions.
 - **EXPLANATION**:
-  Neural networks processing independent video frames suffer from subtle output variances caused by camera sensor thermal noise, lighting fluctuations, and sub-pixel quantization. Without temporal filtering, these micro-variations manifest as visual jitter, twitching, and shaking on the 3D avatar.
+  Neural networks processing independent video frames suffer from subtle output variances caused by camera sensor noise, lighting fluctuations, and sub-pixel quantization. Without temporal filtering, micro-variations manifest as visual jitter and shaking on the 3D avatar.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI filters all 52 blendshape channels and 4 quaternion components across 60 FPS time steps using adaptive filtering.
+  MocapLens AI proposes filtering blendshape channels and quaternion components across time steps using an adaptive One Euro Filter `[DESIGN PROPOSAL - E03 REQUIRED]`.
 - **ENGINEERING CONSEQUENCE**:
-  Without filtering, avatar rendering looks unstable and unconvincing. Applying adaptive temporal filters (e.g., One Euro Filter) eliminates static jitter while preserving dynamic responsiveness during rapid expressions.
+  Without filtering, avatar rendering looks unstable. Applying adaptive temporal filters (One Euro Filter) aims to attenuate static jitter while preserving responsiveness during rapid expressions. Parameters require E03 empirical measurement.
 
 ---
 
@@ -63,10 +63,10 @@ This document provides a comprehensive technical validation of the core computer
   - *Increased Smoothing*: Heavy low-pass filtering yields ultra-smooth motion but introduces phase delay (lag), making the avatar feel sluggish.
   - *Decreased Smoothing*: Zero-lag filtering responds instantly to user expressions but allows raw high-frequency noise through, causing avatar jitter.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI uses the One Euro Filter ($1\text{\euro Filter}$) which dynamically adjusts its cutoff frequency $f_c$ based on signal velocity $|\dot{x}_t|$:
+  MocapLens AI proposes evaluating the One Euro Filter ($1\text{\euro Filter}$) which dynamically adjusts its cutoff frequency $f_c$ based on signal velocity $|\dot{x}_t|$:
   $$f_c = f_{c,\min} + \beta |\dot{x}_t|$$
 - **ENGINEERING CONSEQUENCE**:
-  Fixed low-pass filters (like basic Moving Average) ruin real-time MoCap responsiveness. The One Euro Filter provides heavy smoothing during low velocity (resting pose) and automatically opens the filter cutoff during high velocity (rapid eye blink), keeping latency $<1.2\text{ ms}$ while suppressing static jitter.
+  Fixed low-pass filters ruin real-time MoCap responsiveness. The One Euro Filter provides heavy smoothing during low velocity and opens the filter cutoff during high velocity. Actual latency and jitter attenuation require E03 empirical validation.
 
 ---
 
@@ -76,7 +76,7 @@ This document provides a comprehensive technical validation of the core computer
 - **EXPLANATION**:
   Human facial geometry varies widely: resting eye openness, lip thickness, and eyebrow height differ across individuals. An uncalibrated AI model may misinterpret a user's natural resting face as a slight squint or smile.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI incorporates a 2-second "One-Tap Calibration" phase that captures the user's neutral baseline values $\bar{w}_{neutral}$ and normalizes live expression weights:
+  MocapLens AI proposes a 2-second neutral pose calibration routine that captures baseline values $\bar{w}_{neutral}$ and normalizes live expression weights `[DESIGN PROPOSAL]`:
   $$w_{calibrated} = \text{clamp}\left(\frac{w - \bar{w}_{neutral}}{1.0 - \bar{w}_{neutral}}, \, 0.0, \, 1.0\right)$$
 - **ENGINEERING CONSEQUENCE**:
   Calibration prevents baseline drift, guarantees zero avatar expression artifacts at rest ($w = 0.0$), and ensures full dynamic range ($w = 1.0$) for every user without retraining neural network weights.
@@ -85,15 +85,15 @@ This document provides a comprehensive technical validation of the core computer
 
 ### Question 7: What is the difference between inference latency and end-to-end latency?
 
-- **CONCEPT**: Neural network execution time vs. complete system input-to-output pipeline duration.
+- **CONCEPT**: Neural network execution duration vs. complete system input-to-output pipeline duration.
 - **EXPLANATION**:
-  - *Inference Latency*: Time required solely for the NPU/GPU to execute the neural network forward pass ($\sim 6.0\text{ ms}$).
+  - *Inference Latency*: Time required solely for the model forward pass on mobile hardware.
   - *End-to-End Latency*: Total elapsed time from light hitting the camera sensor to the final rendered frame pixel update on the screen:
     $$T_{end-to-end} = T_{camera} + T_{preprocess} + T_{inference} + T_{postprocess} + T_{bridge} + T_{render}$$
 - **MOCAPLENs APPLICATION**:
-  While the Snapdragon NPU reports $<6.0\text{ ms}$ inference latency, MocapLens AI optimizes the total end-to-end latency to stay within $<16.6\text{ ms}$ (under 1 frame budget at 60 FPS).
+  MocapLens AI targets an end-to-end latency below 1 frame period ($<16.67\text{ ms}$) at target 60 FPS `[TARGET]`.
 - **ENGINEERING CONSEQUENCE**:
-  Bragging about $5\text{ ms}$ NPU inference is meaningless if camera capture adds $30\text{ ms}$ of buffer lag or network transport adds $50\text{ ms}$. All pipeline stages must be optimized concurrently using non-blocking asynchronous architectures.
+  Model inference duration is only one component of total latency. Camera capture, preprocessing, transport, and WebGL rendering must be optimized concurrently using non-blocking asynchronous architectures.
 
 ---
 
@@ -101,11 +101,11 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Accuracy vs. Computational Complexity (FLOPs), Memory Bandwidth, and Power Constraints on Mobile Edge Devices.
 - **EXPLANATION**:
-  A complex Vision Transformer or heavy 3D morphable model (3DMM) may achieve $98\%$ landmark precision but take $45\text{ ms}$ per frame on a mobile GPU ($22\text{ FPS}$ max), while causing rapid thermal throttling and heavy battery drain. A lightweight neural regressor achieving $94\%$ precision in $6\text{ ms}$ ($160\text{ FPS}$ throughput capability) easily runs at a locked 60 FPS under cold thermal conditions.
+  A heavy temporal attention network (such as AtG-ContextNet, Springer 2026) achieves high benchmark precision but introduces an unalterable 12-frame sliding window buffer lag ($\sim 200\text{ ms}$) and requires domain-specific sequence fine-tuning. A single-frame bottleneck MLP regressor (Option B 109.9K Res-MLP, $0.22\text{ MFLOPs}$) provides zero sliding-window buffer lag and zero-shot deployment feasibility `[DESIGN PROPOSAL]`.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI prioritizes low FLOPs, high-throughput, NPU-quantized neural architectures over massive offline models.
+  MocapLens AI prioritizes low FLOPs, low parameter footprint, single-frame zero-delay models over heavy temporal sliding-window architectures.
 - **ENGINEERING CONSEQUENCE**:
-  Selecting heavy models breaks real-time 60 FPS guarantees. MocapLens AI selects optimized mobile architectures (MediaPipe FaceLandmarker with FP16/INT8 NPU delegate execution) to guarantee sustained 60 FPS output.
+  Selecting heavy temporal models breaks real-time interactivity targets. MocapLens AI selects a lightweight single-frame bottleneck Res-MLP regressor candidate for mobile execution.
 
 ---
 
@@ -113,9 +113,9 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Monocular scale ambiguity and depth ($Z$-axis) unobservability.
 - **EXPLANATION**:
-  A single 2D RGB camera projects 3D spatial points into a 2D plane ($x = f \frac{X}{Z}, y = f \frac{Y}{Z}$). Moving the head backward along the $Z$-axis produces the exact same 2D pixel shift as scaling down facial dimensions. RGB-D cameras (TrueDepth ToF / structured light) measure physical distance $Z$ directly in millimeters.
+  A single 2D RGB camera projects 3D spatial points into a 2D plane ($x = f \frac{X}{Z}, y = f \frac{Y}{Z}$). Moving the head backward along the $Z$-axis produces the exact same 2D pixel shift as scaling down facial dimensions. RGB-D cameras measure physical distance $Z$ directly.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI overcomes monocular depth loss by leveraging 3D landmark mesh canonical priors and Perspective-n-Point (PnP) geometric optimization with known camera focal length estimates.
+  MocapLens AI addresses monocular depth ambiguity using canonical 3D mesh priors and Perspective-n-Point (PnP) geometric optimization `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
   Absolute translation $T_z$ in monocular MoCap must be normalized or bound to prevent virtual avatar zooming artifacts when the user tilts or turns their head.
 
@@ -125,12 +125,12 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Linear morph target vertex displacement interpolation in WebGL/3D graphics pipelines.
 - **EXPLANATION**:
-  A 3D character mesh contains a base neutral vertex array $V_0 \in \mathbb{R}^{V \times 3}$ and 52 pre-sculpted offset delta arrays $\Delta V_i \in \mathbb{R}^{V \times 3}$. When MocapLens AI receives a blendshape coefficient $w_i = 0.75$, the WebGL vertex shader executes linear vertex displacement:
+  A 3D character mesh contains a base neutral vertex array $V_0 \in \mathbb{R}^{V \times 3}$ and 52 pre-sculpted offset delta arrays $\Delta V_i \in \mathbb{R}^{V \times 3}$. When a blendshape coefficient $w_i = 0.75$ is received, the WebGL vertex shader executes linear vertex displacement:
   $$V_{final} = V_0 + \sum_{i=1}^{52} w_i \cdot \Delta V_i$$
 - **MOCAPLENs APPLICATION**:
-  The MocapLens WebGL viewer binds incoming 60 Hz 52-float telemetry packets directly to `mesh.morphTargetInfluences` array indices in Three.js.
+  The MocapLens WebGL viewer binds incoming 52-float telemetry packets directly to `mesh.morphTargetInfluences` array indices in Three.js `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Morph target evaluation happens entirely on the laptop GPU via parallel vertex shaders, enabling smooth 60 FPS 3D avatar rendering with zero CPU bottleneck.
+  Morph target evaluation happens on the laptop GPU via parallel vertex shaders, enabling efficient 3D avatar rendering without CPU bottlenecks.
 
 ---
 
@@ -138,12 +138,12 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Data compression ratio, bandwidth savings, latency reduction, and privacy preservation.
 - **EXPLANATION**:
-  - *Streaming 1080p60 Video*: Requires $1920 \times 1080 \times 3 \times 60 \approx 373\text{ MB/sec}$ raw data, or compressed video stream consuming $15-30\text{ Mbps}$ bandwidth with $50-150\text{ ms}$ H.264 encode/decode latency.
-  - *Streaming Parameter Array*: 59 Float32 values ($236\text{ bytes}$) at 60 Hz consumes only $14.16\text{ KB/sec}$ ($0.113\text{ Mbps}$), taking $<1.5\text{ ms}$ to transfer over local socket connection.
+  - *Streaming 1080p60 Video*: Requires $373\text{ MB/sec}$ raw data, or compressed video stream consuming $15-30\text{ Mbps}$ bandwidth with video encode/decode latency.
+  - *Streaming Parameter Array*: 260-byte proposed application payload ($\sim 288$ bytes transmitted UDP packet) at target 60 Hz consumes only $\sim 17.28\text{ KB/sec}$ ($0.138\text{ Mbps}$) `[PROPOSED PROTOCOL SPECIFICATION]`.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI performs all computer vision processing on device and streams only 236-byte binary telemetry packets across the Office Kit bridge.
+  MocapLens AI performs all computer vision processing on device and streams only compact binary telemetry packets across the local transport channel `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Achieves a $220\times$ bandwidth reduction, $<2\text{ ms}$ network transit time, zero video compression artifacts, $100\%$ offline Airplane Mode compatibility, and total user privacy (facial video never leaves the phone).
+  Achieves a massive bandwidth reduction, minimal network transit time, zero video compression artifacts, and user privacy (facial video frames never leave the smartphone).
 
 ---
 
@@ -151,12 +151,12 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Hardware operator compatibility, memory footprint, memory bandwidth bounds, and delegate support.
 - **EXPLANATION**:
-  - *Suitable*: Lightweight CNN/MobileNet architectures using standard $3\times 3$ depthwise separable convolutions, ReLU/SiLU activations, static input tensor shapes, FP16/INT8 quantization, and supported by TFLite/LiteRT NPU delegates.
-  - *Unsuitable*: Dynamic tensor shapes, unquantized FP32 weights, custom unsupported PyTorch operators, massive self-attention layers with quadratic sequence complexity $\mathcal{O}(N^2)$, and large memory footprints ($>50\text{ MB}$).
+  - *Suitable*: Lightweight CNN / MLP architectures with static tensor shapes, low parameter size, FP16/INT8 quantization support, and compatibility with LiteRT / TensorFlow Lite hardware delegates.
+  - *Unsuitable*: Dynamic tensor shapes, unquantized FP32 weights, unsupported PyTorch operators, dynamic sliding sequence buffers, and large memory footprints ($>50\text{ MB}$).
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI selects MediaPipe's TFLite FaceLandmarker neural regressor ($<15\text{ MB}$ weight footprint, fully compatible with Snapdragon Hexagon NPU hardware delegate).
+  MocapLens AI proposes using MediaPipe Tasks Vision SDK and LiteRT runtimes with a 109.9K parameter bottleneck Res-MLP regressor `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
-  Ensures model executes in hardware NPU silicon rather than falling back to slow CPU emulation.
+  Qualcomm NPU / AI Engine Direct is the preferred acceleration target; actual delegate availability, operator compatibility, and latency require E02 validation on the selected iQOO device.
 
 ---
 
@@ -164,16 +164,16 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Empirical hardware profiling vs. theoretical paper benchmarks.
 - **EXPLANATION**:
-  Academic papers state performance under desktop GPUs (e.g. RTX 4090). Real mobile performance depends on device-specific NPU delegates, thermal throttling curves, CameraX buffer copy speeds, and background OS thread contention.
+  Published papers state performance under specific desktop or laboratory hardware. Real mobile performance depends on device-specific delegate support, thermal throttling curves, CameraX buffer copy speeds, and OS thread contention.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI establishes 5 mandatory empirical benchmarks measured live on iQOO hardware:
-  1. Camera frame capture rate (target: $60.0 \pm 0.5\text{ FPS}$).
-  2. NPU inference execution duration (target: $<8.0\text{ ms}$).
-  3. Office Kit socket packet transmission delay (target: $<2.0\text{ ms}$).
-  4. Memory overhead and zero-copy verification ($<50\text{ MB}$ RAM).
-  5. Thermal stability (zero frame drops over 15 minutes of continuous execution).
+  MocapLens AI establishes 5 mandatory empirical benchmarks to be conducted in Stage 2 upon supervisor authorization:
+  1. Experiment E01: CameraX 60 FPS Capture Benchmark.
+  2. Experiment E02: LiteRT Delegate Latency Benchmark (CPU vs GPU vs NPU).
+  3. Experiment E03: One Euro Filter Latency vs. Jitter Tradeoff Test.
+  4. Experiment E04: Local Socket & Transport Latency Test.
+  5. Experiment E05: 15-Minute Thermal Soak & Sustained Performance Test.
 - **ENGINEERING CONSEQUENCE**:
-  Prevents performance surprises during stage pitch demonstrations under venue conditions.
+  Prevents performance surprises during live stage pitch demonstrations under venue conditions.
 
 ---
 
@@ -182,18 +182,19 @@ This document provides a comprehensive technical validation of the core computer
 - **CONCEPT**: Decoupling learned neural representation models from deterministic geometric algorithms and software architecture.
 - **EXPLANATION**:
   - **AI / Deep Learning Components**:
-    - Face detection neural network (SSD / BlazeFace).
+    - Face detection neural network (BlazeFace).
     - 468-point 3D facial landmark regression network.
-    - 52-ARKit FACS blendshape weight estimation neural regressor.
+    - Option B 109.9K Bottleneck Res-MLP Blendshape Regressor `[DESIGN PROPOSAL]`.
   - **Conventional Engineering Components**:
+    - Candidate A3 Personalized Avatar GLTF bone scale deformation.
     - Android CameraX image stream capture and YUV preprocessing.
-    - Perspective-n-Point (PnP) 3D head pose matrix math and quaternion derivation.
-    - One Euro Filter temporal signal smoothing and jitter attenuation.
-    - Subject calibration baseline subtraction and clamping.
-    - Binary array serialization and Office Kit TCP/UDP socket network transport.
-    - Three.js WebGL vertex shader morph target rendering engine and timeline `.BVH` exporter.
+    - EPnP 3D head pose matrix math and quaternion derivation.
+    - One Euro Filter temporal signal smoothing and deadband clamping.
+    - User neutral pose baseline subtraction.
+    - 260-byte binary packet serialization and local transport socket.
+    - Three.js WebGL vertex shader morph target rendering engine and `.BVH` exporter.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI integrates learned NPU representations with deterministic C++/Kotlin/JS engineering modules.
+  MocapLens AI integrates learned NPU representations with deterministic C++/Kotlin/JS engineering modules `[DESIGN PROPOSAL]`.
 - **ENGINEERING CONSEQUENCE**:
   Using conventional engineering for head pose, filtering, and retargeting allows instant mathematical parameter tuning without retraining deep neural networks.
 
@@ -203,22 +204,22 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Identification and mitigation of single-point engineering failures.
 - **EXPLANATION**:
-  1. *Risk 1: Lighting & Motion Blur*: Low light drops front camera capture rate from 60 FPS to 30 FPS or increases exposure blur.
-     - *Mitigation*: Enable CameraX auto-exposure lock and apply light enhancement preprocessing.
-  2. *Risk 2: Office Kit Network Congestion*: Wireless Wi-Fi socket jitter under crowded hackathon environments.
-     - *Mitigation*: Support USB cable reverse port tethering (`adb reverse tcp:8080 tcp:8080`) as fail-safe Airplane Mode connection.
-  3. *Risk 3: Model Operator Hardware Fallback*: NPU delegate rejecting TFLite model operators, falling back to CPU.
-     - *Mitigation*: Validate TFLite delegate operator support matrix during initial build phase.
+  1. *Risk 1: Low-Light Motion Blur*: Low light drops front camera capture rate or increases exposure blur.
+     - *Mitigation*: Enable CameraX exposure lock and low-light gain compensation `[DESIGN PROPOSAL]`.
+  2. *Risk 2: Network Transport Jitter*: Wireless socket jitter under crowded venue environments.
+     - *Mitigation*: Support USB cable ADB reverse port tethering (`adb reverse tcp:8080 tcp:8080`) as fallback connection `[DESIGN PROPOSAL - E04 REQUIRED]`.
+  3. *Risk 3: Model Operator Hardware Fallback*: NPU delegate rejecting model operators, falling back to CPU.
+     - *Mitigation*: Qualcomm NPU / AI Engine Direct is preferred target; GPU/CPU fallback chain configured `[DESIGN PROPOSAL - E02 REQUIRED]`.
   4. *Risk 4: Expression Overshoot / Avatar Distortion*: Blendshape gain mismatch causing avatar mesh self-intersection.
-     - *Mitigation*: Implement configurable expression sensitivity gain sliders and clamping buffers in WebGL viewer.
+     - *Mitigation*: Implement configurable expression sensitivity gain sliders and clamping buffers in WebGL viewer `[DESIGN PROPOSAL]`.
 - **MOCAPLENs APPLICATION**:
-  All four mitigations are architected directly into the MocapLens AI system design.
+  All four mitigations are architected directly into the MocapLens AI system design proposals.
 - **ENGINEERING CONSEQUENCE**:
   Guarantees robust demonstration resilience during live stage presentation regardless of venue conditions.
 
 ---
 
 ## Technical Validation Sign-Off
-- **Status**: Completed & Verified
-- **Assessed By**: MocapLens AI Lead Engineer (Agentic AI)
-- **Target Platform**: iQOO Flagship Device (Snapdragon NPU) + Laptop 3D Engine
+- **Status**: Stage 1 Knowledge Validation Updated & Verified
+- **Target Platform**: iQOO Mobile Device + Laptop 3D Engine
+- **Gate Status**: **STAGE 1 PROVISIONALLY SELECTED — STAGE 2 REMAINS LOCKED & BLOCKED**
