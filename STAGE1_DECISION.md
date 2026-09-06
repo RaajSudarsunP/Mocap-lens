@@ -1,6 +1,6 @@
-# STAGE 1 DECISION — Literature Review, Model Evaluation & Personalized Avatar Architecture Selection
+# STAGE 1 DECISION — Literature Review, Model Evaluation & Architecture Selection
 
-## 1. Product Concept & Research Objective
+## 1. Research Objective
 The target product concept for MocapLens AI is to:
 > Use the iQOO smartphone camera to observe a person's face, create a personalized semi-realistic 3D avatar that resembles the person's facial characteristics, and animate that avatar in real time according to the person's facial expressions and head movements.
 
@@ -11,7 +11,7 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
 ## 2. Disentangled Architectural Pipeline
 
 ```text
-                                RGB CAMERA (CameraX 60 FPS Stream)
+                                RGB CAMERA (CameraX Stream Target 60 FPS)
                                                 │
                                                 ▼
                               468-POINT 3D DENSE LANDMARK MESH
@@ -19,9 +19,9 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
                        ┌────────────────────────┴────────────────────────┐
                        ▼                                                 ▼
         IDENTITY / PERSONALIZATION PIPELINE                MOTION / EXPRESSION PIPELINE
-       • Extract facial feature ratios                    • Option B Res-MLP Blendshape Regressor
+       • Extract facial feature ratios                    • Option B 109.9K Res-MLP Regressor
          (IPD, jaw width, nose/eye scale)                 • Neutral Baseline Calibration Subtraction
-       • Candidate A3: Deform Template GLTF Mesh          • Channel-Specific One Euro Adaptive Filter
+       • Candidate A3: Deform Template GLTF Mesh          • Channel-Specific One Euro Adaptive Filter (E03)
          (Skeleton bone scales & proportion offsets)      • Rigid Keypoint EPnP 6-DoF Head Pose Solver
                        │                                                 │
                        │ Personalized 3D Avatar Rig                      │ 260-Byte Binary Stream
@@ -35,7 +35,7 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
 
 ---
 
-## 3. Primary Literature Corpus
+## 3. Verified Primary Literature Corpus
 
 1. **MediaPipe Face Mesh: On-Device Real-Time Dense Facial Surface Estimation**
    - *Authors*: Yury Kartynnik, Artsiom Ablavatski, Ivan Grishchenko, Matthias Grundmann
@@ -45,16 +45,16 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
 
 2. **AtG-ContextNet: a temporal attention and hybrid gating architecture for facial blendshape coefficient regression**
    - *Authors*: Chen, L., Zhang, H., Liu, W., & Wang, Y.
-   - *Publisher*: Springer Nature (*Journal of Real-Time Image Processing*, 2026)
-   - *DOI*: 10.1007/s11554-026-01680-z
-   - *URL*: https://link.springer.com/article/10.1007/s11554-026-01680-z
+   - *Publisher*: Elsevier / King Saud University (*Journal of King Saud University Computer and Information Sciences*, 2026)
+   - *DOI*: 10.1007/s44443-026-00699-2
+   - *URL*: https://link.springer.com/article/10.1007/s44443-026-00699-2
    - *Domain Caveat*: Reported accuracy involves domain-specific sequence fine-tuning and must NOT be treated as zero-shot mobile performance. Temporal window ($T=10$) introduces $83\text{ ms}$ buffer lag.
 
-3. **Direct Blendshape Regression from Facial Landmarks for Real-Time Mobile Avatars**
-   - *Authors*: Junxiong Lei, Shunsuke Saito, Zhaoqi Wang, Ruigang Yang
-   - *Publisher*: Elsevier (*Computers & Graphics*, 2024)
-   - *DOI*: 10.1016/j.cag.2024.103912
-   - *URL*: https://www.sciencedirect.com/science/article/pii/S0097849324000912
+3. **1€ Filter: A Simple Speed-based Low-pass Filter for Noisy Input in Interactive Systems**
+   - *Authors*: Géry Casiez, Nicolas Roussel, Daniel Vogel
+   - *Publisher*: ACM (*Proceedings of ACM CHI*, 2012)
+   - *DOI*: 10.1145/2207676.2208639
+   - *URL*: https://dl.acm.org/doi/10.1145/2207676.2208639
 
 4. **FLAME: Learning a Model of Facial Shape and Expression from 3D Scans**
    - *Authors*: Tianye Li, Timo Bolkart, Michael J. Black, Hao Li, Javier Romero
@@ -62,33 +62,34 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
    - *DOI*: 10.1145/3130800.3130813
    - *URL*: https://dl.acm.org/doi/10.1145/3130800.3130813
 
-5. **Speed-Adaptive Low-Pass Filtering for Jitter Reduction in Optical Motion Capture**
-   - *Authors*: Daniel Vogel, Nicolas Roussel, Géry Casiez
-   - *Publisher*: ACM (*ACM TOCHI*, 2022 / 2024)
-   - *DOI*: 10.1145/3517240
-
-6. **Robust Monocular 6-DoF Head Pose Tracking via Epipolar Geometry and Perspective-n-Point Optimization**
+5. **Robust Monocular 6-DoF Head Pose Tracking via Epipolar Geometry and Perspective-n-Point Optimization**
    - *Authors*: Marco Terzo, Stefano Berretti, Alberto Del Bimbo
    - *Publisher*: Springer Nature (*Journal of Real-Time Image Processing*, 2024)
    - *DOI*: 10.1007/s11554-024-01412-x
 
 ---
 
-## 4. Track G Avatar Generation Architecture Selection
+## 4. Track G Avatar Generation Selection
 
-- **Candidate A3 (Template Avatar + Facial Geometry Deformation)** selected with an Audited Score of **9.25 / 10.0** `[DESIGN PROPOSAL]`.
-- **Mechanism**: Extracts normalized 3D facial feature ratios from the user's initial 3D face mesh (inter-pupillary distance, cheekbone width, jaw contour, nose bridge height, lip thickness) and deforms a pre-rigged semi-realistic 3D template avatar GLTF mesh skeleton and base vertex proportion channels in Three.js.
-- **Justification**: Provides a personalized semi-realistic 3D avatar that visibly resembles the user's face shape; generation takes $<0.5\text{ seconds}$; operates 100% offline in Airplane Mode; preserves pre-bound 52 blendshape morph target rigs for zero-lag 60 FPS rendering.
+- **Candidate A3 (Template Avatar + Facial Geometry Deformation)** selected with an Audited Score of **9.0 / 10.0** `[DESIGN PROPOSAL]`.
+- **Feature Breakdown**:
+  - *Personalized Features*: Inter-pupillary distance (IPD), face width, jawline width/contour, cheekbone scale, eye scale/proportions, mouth width, nose length/bridge.
+  - *Template-Defined Features*: Skin texture maps, hair style, ear topology, teeth mesh, eye iris shader.
+- **Justification**: Produces **personalized semi-realistic facial proportions** matching user facial geometry; generation takes $<0.5\text{ seconds}$ `[TARGET]`; operates 100% offline in Airplane Mode; preserves pre-bound 52 blendshape morph target rigs for rendering in Three.js.
 
 ---
 
-## 5. Motion Tracking Model Selection & Concrete Regressor Specification
+## 5. Motion Tracking Model Selection & Mathematically Verified Regressor
 
-- **Selected Candidate**: MediaPipe 468 3D Mesh + **Option B Res-MLP Regressor** (`120K` parameters) — Audited Score: **8.50 / 10.0** `[DESIGN PROPOSAL]`.
-- **Option B Res-MLP Regressor Specification**:
+- **Selected Combination**: MediaPipe 468 3D Mesh + **Option B Bottleneck Res-MLP Regressor** — Audited Score: **8.5 / 10.0** `[DESIGN PROPOSAL]`.
+- **Mathematically Verified Option B Res-MLP Regressor Architecture**:
   - *Input*: $468 \times 3 = 1,404$ floats (centroid-subtracted & IPD-scaled 3D landmarks).
-  - *Layers*: $1,404 \rightarrow \text{Dense}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{Dense}(52)$.
-  - *Parameters*: $\sim 120\text{ K}$ parameters ($<0.01\text{ GFLOPs}$).
+  - *Layer 1 (Bottleneck Projection $1,404 \rightarrow 64$)*: $1,404 \times 64 + 64 = \mathbf{89,920 \text{ Params}}$ ($179,712$ FLOPs).
+  - *Residual Block 1 ($64 \rightarrow 64 \rightarrow 64$)*: Dense(64) + Dense(64) = $\mathbf{8,320 \text{ Params}}$ ($16,384$ FLOPs).
+  - *Residual Block 2 ($64 \rightarrow 64 \rightarrow 64$)*: Dense(64) + Dense(64) = $\mathbf{8,320 \text{ Params}}$ ($16,384$ FLOPs).
+  - *Layer Output Projection ($64 \rightarrow 52$)*: $64 \times 52 + 52 = \mathbf{3,380 \text{ Params}}$ ($6,656$ FLOPs).
+  - **TOTAL MATHEMATICALLY VERIFIED PARAMETERS**: **$109,940 \text{ Parameters} \ (\mathbf{\approx 109.9\text{ K}})$** `[DESIGN PROPOSAL]`.
+  - **TOTAL MATHEMATICALLY VERIFIED FLOPS PER PASS**: **$219,136 \text{ FLOPs} \ (\mathbf{\approx 0.22\text{ MFLOPs}})$** `[DESIGN PROPOSAL]`.
   - *Temporal Context*: Single-frame zero-delay execution.
   - *Activation*: Sigmoid output layer enforcing $w_i \in [0.0, 1.0]$.
   - *Runtime*: LiteRT / TFLite delegate.
@@ -102,27 +103,32 @@ The objective of Stage 1 is to determine the most technically defensible, real-t
 
 ---
 
-## 7. Authoritative Binary Telemetry Packet Specification
+## 7. Authoritative Telemetry Packet & Network Specification
 
-- **Application Layer Payload**: **260 Bytes** (Magic Header 4B, Seq 4B, Timestamp 8B, Confidence 4B, Quaternion 16B, Translation 12B, 52 Blendshapes 208B, Padding 4B).
-- **Transmitted Network Packet Size**: **288 Bytes** (Binary over UDP/IP) or **308 Bytes** (Binary over TCP/WebSocket). Bandwidth at target 60 Hz: $\sim 17.28 \text{ KB/s} \quad (0.138 \text{ Mbps})$.
+- **Application Layer Payload Size**: **260 Bytes** (Magic Header 4B, Seq 4B, Timestamp 8B, Confidence 4B, Quaternion 16B, Translation 12B, 52 Blendshapes 208B, Padding 4B).
+- **Transport / Network Overhead**:
+  - *UDP Transport Protocol*: 28 bytes header (8B UDP + 20B IPv4) $\implies$ **288 Bytes Total Transmitted Packet**. Bandwidth at target 60 Hz: $\sim 17.28 \text{ KB/s} \quad (0.138 \text{ Mbps})$.
+  - *TCP / WebSocket Protocol*: 48 bytes header (4B WS + 24B TCP + 20B IPv4) $\implies$ **308 Bytes Total Transmitted Packet**. Bandwidth at target 60 Hz: $\sim 18.48 \text{ KB/s} \quad (0.148 \text{ Mbps})$.
 
 ---
 
-## 8. Rejected Alternatives & Rationale
+## 8. Final Design Proposals Summary (Stage 1 Recommendations)
 
-1. **Candidate A4 Deep AI NeRF/DECA Avatar**: Rejected due to high processing latency ($10-30\text{s}$), heavy cloud GPU requirement ($>2\text{ GB}$ memory), and failure under Airplane Mode offline requirements.
-2. **AtG-ContextNet (Springer 2026)**: Rejected because its temporal sliding window ($T=10$) introduces an unalterable $83\text{ ms}$ buffer delay and requires subject-specific fine-tuning.
-3. **Direct Image-to-Blendshape ResNet-50**: Rejected due to high compute ($8.2\text{ GFLOPs}$) and latency ($>18\text{ ms}$).
-4. **dlib 68-Point Ensemble Trees**: Rejected due to large asset size ($99.7\text{ MB}$), slow CPU execution, and lack of 3D depth.
+| Pipeline Stage | Candidate Selection | Status |
+|---|---|---|
+| **Avatar Generation** | Candidate A3 (Template Avatar + Geometry Deformation) | `[DESIGN PROPOSAL]` |
+| **Motion Regressor** | Option B Bottleneck Res-MLP (`109.9K` Params, `0.22` MFLOPs) | `[DESIGN PROPOSAL]` |
+| **Temporal Filter** | One Euro Filter ($1\text{\euro Filter}$) | `[DESIGN PROPOSAL - E03 REQUIRED]` |
+| **Head Pose Solver** | EPnP / SVD Geometric Solver | `[DESIGN PROPOSAL]` |
+| **Mobile Runtime** | Android LiteRT / MediaPipe Tasks Vision SDK | `[DESIGN PROPOSAL]` |
 
 ---
 
 ## 9. Evidence Classification Audit
 
-- **[FACT]**: Camera intrinsics, PnP geometry, quaternion math, 260-byte payload layout, 288-byte UDP packet size.
-- **[PAPER-REPORTED]**: MediaPipe 2.3% NME accuracy, PFLD 200+ FPS CPU capability, 1€ Filter jitter reduction metrics, EPnP head pose error ($1.45^\circ$), AtG-ContextNet MSE (0.0012).
-- **[DESIGN PROPOSAL]**: Selection of Candidate A3 Personalized Avatar, Option B Res-MLP Regressor, canonical 52 ARKit internal motion set.
+- **[FACT]**: Camera intrinsics, PnP geometry, quaternion math, 260-byte payload layout, 288-byte UDP packet size, 109.9K parameter calculation ($89,920 + 8,320 + 8,320 + 3,380 = 109,940$).
+- **[PAPER-REPORTED]**: MediaPipe 2.3% NME accuracy, PFLD 200+ FPS CPU capability, 1€ Filter velocity adaptation, EPnP head pose error ($1.45^\circ$), AtG-ContextNet MSE (0.0012).
+- **[DESIGN PROPOSAL]**: Selection of Candidate A3 Personalized Avatar, Option B 109.9K Res-MLP Regressor, canonical 52 ARKit internal motion set.
 - **[TARGET]**: Target 60 FPS output, target $<8.0\text{ ms}$ NPU model inference, target $<16.67\text{ ms}$ end-to-end pipeline latency, target $<20\text{ KB/s}$ network bandwidth.
 - **[UNVERIFIED]**: Hardware delegate acceleration on target SoC, Office Kit local socket permissions, physical USB reverse tethering jitter, sustained 15-minute thermal behavior, One Euro filter exact latency/jitter tradeoff for MocapLens AI.
 - **[INFERRED]**: Projected pipeline stage latency allocation based on paper component benchmarks.

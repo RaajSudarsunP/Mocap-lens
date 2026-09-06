@@ -1,54 +1,66 @@
 # Track B — Expression & Blendshape Estimation Comparison
 
 ## Overview
-Track B evaluates the core facial expression regression mechanism for MocapLens AI. This track compares four concrete algorithmic architectures for converting visual inputs into animatable facial motion parameters.
+Track B evaluates candidate facial expression regression architectures for MocapLens AI. This document presents mathematically verified neural parameters and evaluates four concrete algorithmic options.
 
 ---
 
 ## 1. Concrete Architecture Comparison (Options A–D)
 
 ### Option A: Deterministic Geometric Regression
-- **Mechanism**: Calculates Euclidean distances and angle ratios between key 3D landmarks (e.g. upper-to-lower lip distance for `jawOpen`, eyelid distance for `eyeBlink`).
+- **Mechanism**: Calculates Euclidean distances and angle ratios between key 3D landmarks.
 - **Landmark Input**: 468 3D landmarks.
-- **Normalization**: Inter-pupillary distance (IPD) scaling.
 - **Neural Architecture**: None (Pure deterministic mathematical formulation).
 - **Temporal Context**: Frame-independent.
 - **Output Dimensions**: 52 blendshapes $[0.0, 1.0]$.
 - **Training Requirement**: None.
-- **Expected Mobile Cost**: Negligible ($<0.01\text{ ms}$).
+- **Expected Computational Cost**: Negligible ($<0.01\text{ ms}$).
 - **Limitations**: Fails to capture non-linear muscle deformations (e.g. cheek puff, mouth stretch, sneer).
 
 ---
 
-### Option B: Lightweight Landmark-Based Neural Regression (RECOMMENDED SELECTION)
-- **Mechanism**: A lightweight Residual Multi-Layer Perceptron (Res-MLP) maps normalized 3D landmarks directly to 52 canonical blendshape coefficients.
+### Option B: Lightweight Bottleneck Res-MLP Regressor (RECOMMENDED SELECTION `[DESIGN PROPOSAL]`)
+- **Mechanism**: A bottleneck Residual Multi-Layer Perceptron (Res-MLP) maps normalized 3D landmarks directly to 52 canonical blendshape coefficients.
 - **Landmark Input**: 468 3D metric landmarks ($468 \times 3 = 1,404$ floats).
 - **Normalization**: Centroid subtraction and IPD scale normalization:
   $$L_{norm} = \frac{L - C_{centroid}}{d_{IPD}}$$
-- **Feature Extraction & Dimensionality**: $1,404 \text{ floats} \rightarrow \text{Dense}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{Dense}(52)$.
-- **Neural Architecture**: 3-layer Residual MLP ($\sim 120\text{ K}$ parameters).
+- **Mathematical Architecture Breakdown & Parameter Count**:
+  1. *Layer 1 (Bottleneck Projection $1,404 \rightarrow 64$)*:
+     - Weights: $1,404 \times 64 = 89,856$
+     - Biases: $64$
+     - Layer 1 Parameters = **$89,920$** | FLOPs: $2 \times 1,404 \times 64 = 179,712$
+  2. *Residual Block 1 ($64 \rightarrow 64 \rightarrow 64$)*:
+     - Dense 1 ($64 \times 64 + 64 = 4,160$ params)
+     - Dense 2 ($64 \times 64 + 64 = 4,160$ params)
+     - ResBlock 1 Parameters = **$8,320$** | FLOPs: $16,384$
+  3. *Residual Block 2 ($64 \rightarrow 64 \rightarrow 64$)*:
+     - Dense 1 ($64 \times 64 + 64 = 4,160$ params)
+     - Dense 2 ($64 \times 64 + 64 = 4,160$ params)
+     - ResBlock 2 Parameters = **$8,320$** | FLOPs: $16,384$
+  4. *Layer Output Projection ($64 \rightarrow 52$)*:
+     - Weights: $64 \times 52 = 3,328$
+     - Biases: $52$
+     - Output Layer Parameters = **$3,380$** | FLOPs: $6,656$
+  - **TOTAL MATHEMATICALLY VERIFIED PARAMETERS**: **$109,940 \text{ Parameters} \ (\mathbf{\approx 109.9\text{ K}})$** `[DESIGN PROPOSAL]`
+  - **TOTAL MATHEMATICALLY VERIFIED FLOPS PER PASS**: **$219,136 \text{ FLOPs} \ (\mathbf{\approx 0.22\text{ MFLOPs}})$** `[DESIGN PROPOSAL]`
 - **Temporal Context**: Single-frame zero-delay execution; downstream signal smoothing handled by adaptive $1\text{\euro Filter}$.
 - **Output Dimensions**: 52 continuous blendshape coefficients ($w_i \in [0.0, 1.0]$).
 - **Activation**: Sigmoid / Clamped ReLU output layer.
-- **Training Target**: Ground-truth 52 ARKit-style blendshape weights.
-- **Training Dataset**: Synthetic multi-avatar 3D mesh dataset (e.g. 500,000 frames from Lei et al. 2024 / MediaPipe Face Mesh dataset).
-- **Training / Fine-Tuning Requirement**: Pre-trained zero-shot model; optional 2-second user neutral calibration baseline subtraction during runtime.
-- **Expected Mobile Computational Cost**: $\sim 120\text{ K}$ parameters, $<0.01\text{ GFLOPs}$, estimated execution duration $<0.5\text{ ms}$ on mobile CPU/GPU `[INFERRED]`.
 - **Runtime**: LiteRT / TensorFlow Lite delegate.
-- **Justification**: Provides the optimal balance of expression fidelity, zero buffer lag, low parameter size, zero-shot deployment, and 30-hour hackathon feasibility.
+- **Target Execution Duration**: $<1.0\text{ ms}$ on mobile CPU/NPU `[TARGET - E02 BENCHMARK REQUIRED]`.
+- **Justification**: The 109.9K bottleneck architecture provides low parameter footprint, low FLOPs, zero sliding-window buffer lag, and zero-shot mobile execution feasibility.
 
 ---
 
-### Option C: Temporal Neural Regression (e.g. AtG-ContextNet)
+### Option C: Temporal Neural Regression (e.g. AtG-ContextNet, Springer 2026)
 - **Mechanism**: Temporal Multi-Head Attention encoder + Hybrid GRU network processing sliding sequence windows of $T=10$ landmark frames.
 - **Landmark Input**: $T \times 468 \times 3$ ($14,040$ floats per sliding window).
-- **Normalization**: Procrustes spatial alignment.
 - **Neural Architecture**: Attention Transformer + GRU ($8.4\text{ M}$ parameters).
 - **Temporal Context**: Sliding window of $T=10$ frames ($\sim 83\text{ ms}$ buffer window delay).
 - **Output Dimensions**: 52 blendshape coefficients.
 - **Training / Fine-Tuning Requirement**: **Requires domain-specific user fine-tuning; zero-shot generalization degrades by $18-25\%$ without fine-tuning `[PAPER-REPORTED]`.**
-- **Expected Mobile Computational Cost**: $8.4\text{ M}$ parameters, $1.8\text{ GFLOPs}$, estimated latency $6.0 - 12.0\text{ ms}$ plus $83\text{ ms}$ buffer delay `[INFERRED]`.
-- **Limitations**: High parameter size, heavy phase lag, and fine-tuning requirement make it unfeasible for zero-shot mobile execution and a 30-hour hackathon build.
+- **Expected Mobile Computational Cost**: $8.4\text{ M}$ parameters, $1.8\text{ GFLOPs}$ `[PAPER-REPORTED]`.
+- **Limitations**: High parameter size, heavy phase lag ($83\text{ ms}$), and fine-tuning requirement make it unfeasible for zero-shot mobile execution and a 30-hour hackathon build.
 
 ---
 
@@ -57,7 +69,6 @@ Track B evaluates the core facial expression regression mechanism for MocapLens 
 - **Landmark Input**: 468 3D landmarks + initial geometric ratio vector.
 - **Neural Architecture**: 2-layer MLP ($\sim 60\text{ K}$ parameters).
 - **Output Dimensions**: 52 blendshape coefficients.
-- **Expected Mobile Computational Cost**: Very Low ($<0.2\text{ ms}$).
 - **Limitations**: Requires tuning both deterministic heuristics and neural delta weights.
 
 ---
@@ -67,8 +78,8 @@ Track B evaluates the core facial expression regression mechanism for MocapLens 
 | Architecture Option | Expression Fidelity | Phase Lag / Latency | Mobile Compute Cost | Zero-Shot Feasibility | 30-Hour Build Feasibility |
 |---|---|---|---|---|---|
 | **Option A (Deterministic Geometry)** | Moderate | Zero | Negligible | High | High |
-| **Option B (Res-MLP Regressor)** | **High** | **Zero (<0.5 ms)** | **Minimal (120K params)** | **High (Zero-shot)** | **Highest** |
+| **Option B (109.9K Res-MLP Regressor)** | **High** | **Zero (<1.0 ms Target)** | **Minimal (109.9K params)** | **High (Zero-shot)** | **Highest** |
 | **Option C (Temporal Attention)** | High (Fine-tuned) | High (83 ms lag) | High (8.4M params) | Poor (Requires fine-tuning) | Poor |
 | **Option D (Hybrid Correction)** | Moderate-High | Zero | Minimal | Moderate | Moderate |
 
-**Selected Architecture**: **Option B (Lightweight Landmark-Based Res-MLP Regressor)** `[DESIGN PROPOSAL]`.
+**Selected Architecture**: **Option B (Lightweight Bottleneck Res-MLP Regressor — 109.9K Parameters)** `[DESIGN PROPOSAL]`.
