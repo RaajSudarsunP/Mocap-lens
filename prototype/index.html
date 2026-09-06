@@ -220,32 +220,39 @@
       });
 
       btnPersonalize.addEventListener('click', () => {
-        if (latestLandmarks && avatarViewer.avatarMesh) {
-          trackingState = "PERSONALIZING";
-          acquisitionText.textContent = "Personalizing avatar geometry...";
-          
-          setTimeout(() => {
+        trackingState = "PERSONALIZING";
+        acquisitionText.textContent = "Personalizing avatar geometry...";
+        
+        setTimeout(() => {
+          if (latestLandmarks) {
             const props = avatarPersonalizer.extractUserFacialProportions(latestLandmarks);
-            avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
+            avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer);
             trackingState = "PERSONALIZED";
-            acquisitionText.textContent = `Avatar personalized (IPD: ${props.ipdRatio.toFixed(2)})`;
-          }, 300);
-        } else {
-          // Synthetic proportion fallback if landmarks aren't ready
-          const dummyLandmarks = new Array(474).fill({ x: 0.5, y: 0.5, z: 0.0 });
-          dummyLandmarks[33] = { x: 0.45, y: 0.45, z: 0.0 };
-          dummyLandmarks[263] = { x: 0.55, y: 0.45, z: 0.0 };
-          dummyLandmarks[234] = { x: 0.40, y: 0.50, z: 0.0 };
-          dummyLandmarks[454] = { x: 0.60, y: 0.50, z: 0.0 };
-          dummyLandmarks[172] = { x: 0.42, y: 0.65, z: 0.0 };
-          dummyLandmarks[397] = { x: 0.58, y: 0.65, z: 0.0 };
-          dummyLandmarks[1] = { x: 0.50, y: 0.52, z: 0.0 };
+            acquisitionText.textContent = `Avatar personalized (Face Width: ${props.faceWidthRatio.toFixed(2)}, IPD: ${props.eyeSpacingRatio.toFixed(2)})`;
+          } else {
+            // Synthetic proportion fallback if landmarks aren't ready
+            const dummyLandmarks = new Array(478).fill({ x: 0.5, y: 0.5, z: 0.0 });
+            dummyLandmarks[33] = { x: 0.44, y: 0.45, z: 0.0 };
+            dummyLandmarks[263] = { x: 0.56, y: 0.45, z: 0.0 };
+            dummyLandmarks[234] = { x: 0.38, y: 0.50, z: 0.0 };
+            dummyLandmarks[454] = { x: 0.62, y: 0.50, z: 0.0 };
+            dummyLandmarks[10] = { x: 0.50, y: 0.30, z: 0.0 };
+            dummyLandmarks[152] = { x: 0.50, y: 0.72, z: 0.0 };
+            dummyLandmarks[172] = { x: 0.41, y: 0.66, z: 0.0 };
+            dummyLandmarks[397] = { x: 0.59, y: 0.66, z: 0.0 };
+            dummyLandmarks[1] = { x: 0.50, y: 0.52, z: 0.0 };
+            dummyLandmarks[6] = { x: 0.50, y: 0.45, z: 0.0 };
+            dummyLandmarks[129] = { x: 0.48, y: 0.53, z: 0.0 };
+            dummyLandmarks[358] = { x: 0.52, y: 0.53, z: 0.0 };
+            dummyLandmarks[61] = { x: 0.46, y: 0.60, z: 0.0 };
+            dummyLandmarks[291] = { x: 0.54, y: 0.60, z: 0.0 };
 
-          const props = avatarPersonalizer.extractUserFacialProportions(dummyLandmarks);
-          avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
-          trackingState = "PERSONALIZED";
-          acquisitionText.textContent = `Avatar personalized (Proportion ratio: ${props.ipdRatio.toFixed(2)})`;
-        }
+            const props = avatarPersonalizer.extractUserFacialProportions(dummyLandmarks);
+            avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer);
+            trackingState = "PERSONALIZED";
+            acquisitionText.textContent = `Avatar personalized (Face Width: ${props.faceWidthRatio.toFixed(2)}, IPD: ${props.eyeSpacingRatio.toFixed(2)})`;
+          }
+        }, 300);
       });
 
       btnRecord.addEventListener('click', () => {
