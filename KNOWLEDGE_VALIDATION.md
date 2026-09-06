@@ -79,7 +79,7 @@ This document provides a comprehensive technical validation of the core computer
   MocapLens AI proposes a 2-second neutral pose calibration routine that captures baseline values $\bar{w}_{neutral}$ and normalizes live expression weights `[DESIGN PROPOSAL]`:
   $$w_{calibrated} = \text{clamp}\left(\frac{w - \bar{w}_{neutral}}{1.0 - \bar{w}_{neutral}}, \, 0.0, \, 1.0\right)$$
 - **ENGINEERING CONSEQUENCE**:
-  Calibration prevents baseline drift, guarantees zero avatar expression artifacts at rest ($w = 0.0$), and ensures full dynamic range ($w = 1.0$) for every user without retraining neural network weights.
+  Calibration aims to reduce baseline expression artifacts at rest and normalize the usable expression range; effectiveness requires empirical validation.
 
 ---
 
@@ -101,7 +101,7 @@ This document provides a comprehensive technical validation of the core computer
 
 - **CONCEPT**: Accuracy vs. Computational Complexity (FLOPs), Memory Bandwidth, and Power Constraints on Mobile Edge Devices.
 - **EXPLANATION**:
-  A heavy temporal attention network (such as AtG-ContextNet, Springer 2026) achieves high benchmark precision but introduces an unalterable 12-frame sliding window buffer lag ($\sim 200\text{ ms}$) and requires domain-specific sequence fine-tuning. A single-frame bottleneck MLP regressor (Option B 109.9K Res-MLP, $0.22\text{ MFLOPs}$) provides zero sliding-window buffer lag and zero-shot deployment feasibility `[DESIGN PROPOSAL]`.
+  A heavy temporal attention network (such as AtG-ContextNet, Springer 2026) uses a 12-frame temporal sequence, which introduces temporal context and may increase buffering/latency depending on implementation. A single-frame bottleneck MLP regressor (Option B 109.9K Res-MLP, $0.22\text{ MFLOPs}$) provides a lightweight single-frame design candidate suitable for empirical mobile deployment testing `[DESIGN PROPOSAL]`.
 - **MOCAPLENs APPLICATION**:
   MocapLens AI prioritizes low FLOPs, low parameter footprint, single-frame zero-delay models over heavy temporal sliding-window architectures.
 - **ENGINEERING CONSEQUENCE**:
@@ -141,9 +141,9 @@ This document provides a comprehensive technical validation of the core computer
   - *Streaming 1080p60 Video*: Requires $373\text{ MB/sec}$ raw data, or compressed video stream consuming $15-30\text{ Mbps}$ bandwidth with video encode/decode latency.
   - *Streaming Parameter Array*: 260-byte proposed application payload ($\sim 288$ bytes transmitted UDP packet) at target 60 Hz consumes only $\sim 17.28\text{ KB/sec}$ ($0.138\text{ Mbps}$) `[PROPOSED PROTOCOL SPECIFICATION]`.
 - **MOCAPLENs APPLICATION**:
-  MocapLens AI performs all computer vision processing on device and streams only compact binary telemetry packets across the local transport channel `[DESIGN PROPOSAL]`.
+  The proposed parameter-streaming design is expected to substantially reduce bandwidth relative to video streaming; actual transport latency and packet-loss behavior require E04 validation. Facial video frames never leave the smartphone, preserving user privacy as a fundamental design property.
 - **ENGINEERING CONSEQUENCE**:
-  Achieves a massive bandwidth reduction, minimal network transit time, zero video compression artifacts, and user privacy (facial video frames never leave the smartphone).
+  Minimizes network bandwidth, payload size, and user privacy risks. Transport performance requires E04 validation.
 
 ---
 
@@ -213,9 +213,9 @@ This document provides a comprehensive technical validation of the core computer
   4. *Risk 4: Expression Overshoot / Avatar Distortion*: Blendshape gain mismatch causing avatar mesh self-intersection.
      - *Mitigation*: Implement configurable expression sensitivity gain sliders and clamping buffers in WebGL viewer `[DESIGN PROPOSAL]`.
 - **MOCAPLENs APPLICATION**:
-  All four mitigations are architected directly into the MocapLens AI system design proposals.
+  These mitigations are intended to improve demonstration resilience under varying venue conditions; effectiveness requires prototype and transport testing.
 - **ENGINEERING CONSEQUENCE**:
-  Guarantees robust demonstration resilience during live stage presentation regardless of venue conditions.
+  Ensures risk awareness and guides Stage 2 empirical test design.
 
 ---
 
