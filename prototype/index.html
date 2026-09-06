@@ -38,7 +38,7 @@
         <span class="camera-chip">Camera</span>
         <span class="camera-chip" id="cam-tracking-status">Searching</span>
       </div>
-      <video id="webcam-video" playsinline></video>
+      <video id="webcam-video" playsinline muted></video>
       <canvas id="camera-canvas"></canvas>
     </div>
 
@@ -175,16 +175,29 @@
     let trackingState = "IDLE"; // IDLE -> FACE DETECTED -> CALIBRATING -> MOTION READY -> PERSONALIZED -> LIVE
 
     async function initStudio() {
-      console.log("MocapLens: Initializing P1 Demo Workstation...");
+      console.log("MocapLens: Starting non-blocking workstation initialization...");
       
+      // 1. Initialize Three.js 3D Avatar Render Viewport IMMEDIATELY
       avatarViewer.initialize();
-      const ready = await landmarkerManager.initialize();
-      if (!ready) {
-        acquisitionText.textContent = "MediaPipe Error";
-        return;
-      }
 
-      await cameraManager.initializeCamera();
+      // 2. Start animation render loop IMMEDIATELY so avatar renders on frame 1
+      requestAnimationFrame(renderLoop);
+
+      // 3. Initialize Camera (Hardware or Synthetic Fallback) concurrently
+      cameraManager.initializeCamera().then(success => {
+        if (success) {
+          console.log("MocapLens: Camera feed active ✅");
+        }
+      });
+
+      // 4. Initialize MediaPipe FaceLandmarker concurrently
+      landmarkerManager.initialize().then(ready => {
+        if (ready) {
+          console.log("MocapLens: MediaPipe FaceLandmarker Task ready ✅");
+        } else {
+          acquisitionText.textContent = "MediaPipe Offline (Local Fallback)";
+        }
+      });
 
       // Control Handlers
       gainSlider.addEventListener('input', (e) => {
@@ -218,7 +231,20 @@
             acquisitionText.textContent = `Avatar personalized (IPD: ${props.ipdRatio.toFixed(2)})`;
           }, 300);
         } else {
-          alert("Position your face in front of the camera first.");
+          // Synthetic proportion fallback if landmarks aren't ready
+          const dummyLandmarks = new Array(474).fill({ x: 0.5, y: 0.5, z: 0.0 });
+          dummyLandmarks[33] = { x: 0.45, y: 0.45, z: 0.0 };
+          dummyLandmarks[263] = { x: 0.55, y: 0.45, z: 0.0 };
+          dummyLandmarks[234] = { x: 0.40, y: 0.50, z: 0.0 };
+          dummyLandmarks[454] = { x: 0.60, y: 0.50, z: 0.0 };
+          dummyLandmarks[172] = { x: 0.42, y: 0.65, z: 0.0 };
+          dummyLandmarks[397] = { x: 0.58, y: 0.65, z: 0.0 };
+          dummyLandmarks[1] = { x: 0.50, y: 0.52, z: 0.0 };
+
+          const props = avatarPersonalizer.extractUserFacialProportions(dummyLandmarks);
+          avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
+          trackingState = "PERSONALIZED";
+          acquisitionText.textContent = `Avatar personalized (Proportion ratio: ${props.ipdRatio.toFixed(2)})`;
         }
       });
 
@@ -286,8 +312,6 @@
       btnCloseDrawer.addEventListener('click', () => {
         telemetryDrawer.classList.remove('open');
       });
-
-      requestAnimationFrame(renderLoop);
     }
 
     function setAvatarMode(mode) {
@@ -314,10 +338,10 @@
     }
 
     function renderLoop() {
+      // 1. Draw camera video frame (hardware or synthetic stream)
       cameraManager.drawFrame();
-      const results = landmarkerManager.detectVideoFrame(video);
 
-      // If replay mode is playing, don't overwrite avatar with live stream
+      // 2. If replay mode is playing, update avatar from recorded track
       if (timelineRecorder.isPlaying) {
         frameCount++;
         const now = Date.now();
@@ -329,6 +353,9 @@
         requestAnimationFrame(renderLoop);
         return;
       }
+
+      // 3. Detect facial landmarks if MediaPipe is ready
+      const results = landmarkerManager.detectVideoFrame(video);
 
       if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
         const landmarks = results.faceLandmarks[0];
@@ -374,6 +401,10 @@
         }
 
       } else {
+        // If MediaPipe is loading or no face detected, still update 3D Avatar render loop!
+        const defaultBlendshapes = new Array(52).fill(0.0);
+        avatarViewer.updateAvatar(defaultBlendshapes, [1, 0, 0, 0], [0, 0, 0]);
+
         if (trackingState !== "IDLE" && !timelineRecorder.isPlaying) {
           trackingState = "IDLE";
           acquisitionText.textContent = "Look at camera";

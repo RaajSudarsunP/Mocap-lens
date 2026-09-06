@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MocapLens Debug 2 — Webcam Camera Test</title>
+  <style>
+    body { margin: 0; background: #0c1017; color: #fff; font-family: monospace; padding: 20px; }
+    #info { background: #141a24; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+    video { width: 640px; height: 360px; background: #000; border-radius: 8px; transform: scaleX(-1); }
+    .err { color: #ef4444; font-weight: bold; }
+    .ok { color: #22c55e; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h2>MocapLens Debug 2: Webcam Camera Test</h2>
+    <div id="status">Initializing camera request...</div>
+    <div id="details"></div>
+  </div>
+
+  <video id="webcam-video" autoplay playsinline muted></video>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const detailsEl = document.getElementById('details');
+    const video = document.getElementById('webcam-video');
+
+    async function testCamera() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("navigator.mediaDevices.getUserMedia is NOT supported in this browser context (check if URL is http/https or secure context).");
+        }
+
+        const constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user"
+          },
+          audio: false
+        };
+
+        statusEl.textContent = "Requesting webcam permissions (getUserMedia)...";
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+
+        video.onloadedmetadata = () => {
+          video.play();
+          const track = stream.getVideoTracks()[0];
+          const settings = track ? track.getSettings() : {};
+
+          statusEl.className = "ok";
+          statusEl.textContent = "Camera Stream Active ✅";
+
+          detailsEl.innerHTML = `
+            <div><strong>Stream Active:</strong> ${stream.active}</div>
+            <div><strong>Video ReadyState:</strong> ${video.readyState}</div>
+            <div><strong>Resolution:</strong> ${video.videoWidth} x ${video.videoHeight}</div>
+            <div><strong>Track Label:</strong> ${track ? track.label : 'N/A'}</div>
+            <div><strong>Actual Frame Rate:</strong> ${settings.frameRate || 'N/A'} FPS</div>
+          `;
+        };
+
+      } catch (err) {
+        statusEl.className = "err";
+        statusEl.textContent = "Camera Initialization Failed ❌";
+        detailsEl.innerHTML = `
+          <div><strong>Error Name:</strong> ${err.name}</div>
+          <div><strong>Error Message:</strong> ${err.message}</div>
+          <div><strong>Protocol:</strong> ${window.location.protocol}</div>
+          <div><strong>Is Secure Context:</strong> ${window.isSecureContext}</div>
+        `;
+        console.error("Camera Test Failed:", err);
+      }
+    }
+
+    testCamera();
+  </script>
+</body>
+</html>
