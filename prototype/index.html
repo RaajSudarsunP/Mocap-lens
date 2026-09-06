@@ -12,13 +12,13 @@
   <header>
     <div class="brand">
       <span class="brand-title">MocapLens</span>
-      <span class="brand-tag">P0 PROTOTYPE</span>
+      <span class="brand-tag">P1 DEMO WORKSTATION</span>
     </div>
 
     <div class="header-status">
       <div class="acquisition-badge">
         <div class="status-dot" id="status-dot"></div>
-        <span id="acquisition-text">Looking for face...</span>
+        <span id="acquisition-text">Look at camera</span>
       </div>
       <div class="fps-badge" id="status-fps">-- FPS</div>
     </div>
@@ -91,6 +91,7 @@
 
     <div class="control-group">
       <button class="m3-button m3-button-primary" id="btn-record">Start Capture</button>
+      <button class="m3-button" id="btn-replay">Replay Take</button>
     </div>
 
     <div class="control-group">
@@ -99,6 +100,7 @@
         <input type="range" min="0.5" max="2.5" step="0.1" value="1.0" class="gain-slider" id="gain-slider">
         <span id="gain-label">1.0x</span>
       </div>
+      <button class="m3-button" id="btn-reset">Reset Demo</button>
       <button class="m3-button" id="btn-export">Export JSON</button>
       <button class="m3-button" id="btn-tech-toggle">Technical View</button>
     </div>
@@ -136,6 +138,8 @@
     const btnCalibrate = document.getElementById('btn-calibrate');
     const btnPersonalize = document.getElementById('btn-personalize');
     const btnRecord = document.getElementById('btn-record');
+    const btnReplay = document.getElementById('btn-replay');
+    const btnReset = document.getElementById('btn-reset');
     const btnExport = document.getElementById('btn-export');
     const btnTechToggle = document.getElementById('btn-tech-toggle');
     const btnCloseDrawer = document.getElementById('btn-close-drawer');
@@ -168,10 +172,10 @@
     let latestLandmarks = null;
     let latestBlendshapes = null;
     let expressionGain = 1.0;
-    let trackingState = "SEARCHING"; // SEARCHING -> DETECTED -> CALIBRATED -> CAPTURING
+    let trackingState = "IDLE"; // IDLE -> FACE DETECTED -> CALIBRATING -> MOTION READY -> PERSONALIZED -> LIVE
 
     async function initStudio() {
-      console.log("MocapLens: Initializing Material 3 Workstation...");
+      console.log("MocapLens: Initializing P1 Demo Workstation...");
       
       avatarViewer.initialize();
       const ready = await landmarkerManager.initialize();
@@ -204,9 +208,15 @@
 
       btnPersonalize.addEventListener('click', () => {
         if (latestLandmarks && avatarViewer.avatarMesh) {
-          const props = avatarPersonalizer.extractUserFacialProportions(latestLandmarks);
-          avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
-          acquisitionText.textContent = `Avatar personalized (IPD: ${props.ipdRatio.toFixed(2)})`;
+          trackingState = "PERSONALIZING";
+          acquisitionText.textContent = "Personalizing avatar geometry...";
+          
+          setTimeout(() => {
+            const props = avatarPersonalizer.extractUserFacialProportions(latestLandmarks);
+            avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer.avatarMesh);
+            trackingState = "PERSONALIZED";
+            acquisitionText.textContent = `Avatar personalized (IPD: ${props.ipdRatio.toFixed(2)})`;
+          }, 300);
         } else {
           alert("Position your face in front of the camera first.");
         }
@@ -214,11 +224,11 @@
 
       btnRecord.addEventListener('click', () => {
         if (timelineRecorder.isRecording) {
-          timelineRecorder.stopRecording();
+          const frames = timelineRecorder.stopRecording();
           btnRecord.textContent = "Start Capture";
           btnRecord.classList.remove("m3-button-recording");
           btnRecord.classList.add("m3-button-primary");
-          acquisitionText.textContent = "Capture completed";
+          acquisitionText.textContent = `Capture finished (${frames.length} frames)`;
         } else {
           timelineRecorder.startRecording();
           btnRecord.textContent = "Stop Capture";
@@ -226,6 +236,43 @@
           btnRecord.classList.add("m3-button-recording");
           acquisitionText.textContent = "Capturing motion take...";
         }
+      });
+
+      btnReplay.addEventListener('click', () => {
+        if (timelineRecorder.isPlaying) {
+          timelineRecorder.stopPlayback();
+          btnReplay.textContent = "Replay Take";
+          acquisitionText.textContent = "Replay stopped";
+        } else {
+          const ok = timelineRecorder.startPlayback(
+            (blendshapes, quat, trans) => {
+              avatarViewer.updateAvatar(blendshapes, quat, trans);
+              updateTelemetryMeters(blendshapes, quat);
+            },
+            () => {
+              btnReplay.textContent = "Replay Take";
+              acquisitionText.textContent = "Motion replay complete";
+            }
+          );
+          if (ok) {
+            btnReplay.textContent = "Pause Replay";
+            acquisitionText.textContent = "Replaying captured motion track...";
+          }
+        }
+      });
+
+      btnReset.addEventListener('click', () => {
+        timelineRecorder.stopPlayback();
+        if (timelineRecorder.isRecording) timelineRecorder.stopRecording();
+        blendshapeProcessor.resetCalibration();
+        trackingState = "IDLE";
+        acquisitionText.textContent = "Look at camera";
+        camTrackingStatus.textContent = "Searching";
+        statusDot.style.background = "#94a3b8";
+        if (avatarViewer.avatarMesh) {
+          avatarViewer.avatarMesh.scale.set(1.0, 1.0, 1.0);
+        }
+        console.log("MocapLens: Demo state reset.");
       });
 
       btnExport.addEventListener('click', () => {
@@ -257,17 +304,39 @@
       }
     }
 
+    function updateTelemetryMeters(blendshapes, quaternion) {
+      if (!telemetryDrawer.classList.contains('open')) return;
+
+      valJaw.textContent = (blendshapes[17] || 0).toFixed(2);
+      valBlinkL.textContent = (blendshapes[0] || 0).toFixed(2);
+      valSmileL.textContent = (blendshapes[23] || 0).toFixed(2);
+      valBrow.textContent = (blendshapes[43] || 0).toFixed(2);
+    }
+
     function renderLoop() {
       cameraManager.drawFrame();
       const results = landmarkerManager.detectVideoFrame(video);
+
+      // If replay mode is playing, don't overwrite avatar with live stream
+      if (timelineRecorder.isPlaying) {
+        frameCount++;
+        const now = Date.now();
+        if (now - lastFpsCalc >= 1000) {
+          statusFps.textContent = `${frameCount} FPS`;
+          frameCount = 0;
+          lastFpsCalc = now;
+        }
+        requestAnimationFrame(renderLoop);
+        return;
+      }
 
       if (results && results.faceLandmarks && results.faceLandmarks.length > 0) {
         const landmarks = results.faceLandmarks[0];
         latestLandmarks = landmarks;
 
-        if (trackingState === "SEARCHING") {
-          trackingState = "DETECTED";
-          acquisitionText.textContent = "Face tracking active";
+        if (trackingState === "IDLE") {
+          trackingState = "FACE DETECTED";
+          acquisitionText.textContent = "Face detected";
           camTrackingStatus.textContent = "Tracking";
           statusDot.style.background = "#16a34a";
         }
@@ -301,17 +370,13 @@
         if (telemetryDrawer.classList.contains('open')) {
           const radToDeg = 180 / Math.PI;
           techPose.textContent = `${(pose.euler.pitch * radToDeg).toFixed(1)}° / ${(pose.euler.yaw * radToDeg).toFixed(1)}° / ${(pose.euler.roll * radToDeg).toFixed(1)}°`;
-          
-          valJaw.textContent = (smoothedBlendshapes[17] || 0).toFixed(2);
-          valBlinkL.textContent = (smoothedBlendshapes[0] || 0).toFixed(2);
-          valSmileL.textContent = (smoothedBlendshapes[23] || 0).toFixed(2);
-          valBrow.textContent = (smoothedBlendshapes[43] || 0).toFixed(2);
+          updateTelemetryMeters(smoothedBlendshapes, filteredQuat);
         }
 
       } else {
-        if (trackingState !== "SEARCHING") {
-          trackingState = "SEARCHING";
-          acquisitionText.textContent = "Looking for face...";
+        if (trackingState !== "IDLE" && !timelineRecorder.isPlaying) {
+          trackingState = "IDLE";
+          acquisitionText.textContent = "Look at camera";
           camTrackingStatus.textContent = "Searching";
           statusDot.style.background = "#94a3b8";
         }

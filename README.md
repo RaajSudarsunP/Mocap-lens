@@ -1,33 +1,48 @@
-# MocapLens AI — Stage 2 P0 Functional Desktop Prototype
+# MocapLens AI — Stage 2 P1 Hackathon Demo Workstation
 
 MocapLens AI is a zero-latency, 52-Blendshape Facial Motion Capture & 3D Spatial Rig for Game Developers, Animators, and VTubers.
 
-This repository contains the **P0 Functional Desktop Prototype** demonstrating live facial motion capture, head pose tracking, adaptive signal filtering, Candidate A3 avatar personalization, and WebGL avatar rendering directly in the browser via webcam!
+This repository contains the **P1 Hackathon Demo Workstation** built with Google's Material 3 design system, demonstrating live facial motion capture, 6-DoF head pose tracking, $1\text{\euro Filter}$ signal smoothing, Candidate A3 avatar personalization, cross-avatar motion replay, and WebGL avatar rendering directly in the browser via webcam!
 
 ---
 
-## Prototype Features
-- **Live Camera Mesh Tracking**: Real-time 468-point 3D facial landmark mesh overlay using MediaPipe Tasks Vision.
-- **52 ARKit Blendshapes**: Extraction and retargeting of 52 standard facial morph target coefficients.
-- **6-DoF Head Tracking**: EPnP geometric orientation solver generating smooth quaternions $(q_w, q_x, q_y, q_z)$.
-- **One Euro Filter ($1\text{\euro Filter}$)**: Adaptive temporal smoothing to eliminate static webcam jitter.
-- **Candidate A3 Avatar Personalization**: Deforms base 3D avatar skeleton bone scales and facial feature channels (IPD, jaw width, eye spacing, nose bridge) to match user face proportions.
-- **Interactive Studio Viewport**: Three.js WebGL viewport with lighting, background controls, telemetry dashboard, and timeline keyframe exporter.
+## 🚀 Quick Run Instructions
+
+1. **Launch Local HTTP Server**:
+   ```powershell
+   py -m http.server 8000
+   ```
+2. **Open Prototype in Chrome / Edge**:
+   ```text
+   http://localhost:8000/prototype/index.html
+   ```
 
 ---
 
-## Project Structure
+## 🎬 30–45 Second Presentation Flow
+
+1. **0–5s**: Face camera setup (`Look at camera`).
+2. **5–10s**: Face detected $\rightarrow$ Click `Personalize (A3)` to deform avatar mesh geometry (`IPD`, `jaw width`).
+3. **10–20s**: Live facial performance (smile, blink, jaw open, brow raise, head turn).
+4. **20–27s**: Click `Cyber` / `Wireframe` avatar mode pills (demonstrates that the captured motion signal is **100% independent** of the avatar mesh).
+5. **27–37s**: Click `Start Capture`, perform a 5s motion take, click `Stop Capture`, then click `Replay Take`. The recorded motion replays across any selected avatar!
+6. **37–45s**: Click `Technical View` to open the side drawer telemetry panel (468 3D landmarks, 52 blendshapes, 6-DoF pose, FPS).
+
+---
+
+## 📁 Repository Architecture
+
 ```text
 prototype/
-├── index.html                    # Main Split-Screen Application View
-├── styles.css                    # Studio Dark Theme & Glassmorphism Design
+├── index.html                    # Material 3 Workstation Interface
+├── styles.css                    # Restrained Material 3 Dark Workstation Theme
 └── src/
     ├── camera/
     │   └── camera_manager.js     # HTML5 MediaDevices Webcam Capture Manager
     ├── face_tracking/
-    │   └── landmarker.js         # MediaPipe FaceLandmarker Tasks Vision Wrapper
+    │   └── landmarker.js         # MediaPipe FaceLandmarker Tasks Vision SDK
     ├── expression/
-    │   └── blendshape_processor.js # Expression Interface & Res-MLP Pipeline
+    │   └── blendshape_processor.js # 52 ARKit Blendshapes & Neutral Calibrator
     ├── pose/
     │   └── head_pose_solver.js   # 6-DoF Quaternion & PnP Pose Calculator
     ├── filtering/
@@ -37,36 +52,15 @@ prototype/
     ├── rendering/
     │   └── three_avatar_viewer.js# Three.js 3D Avatar Render Viewport
     └── recorder/
-        └── timeline_recorder.js  # Live Take Keyframe Recorder & JSON Exporter
+        └── timeline_recorder.js  # Live Take Keyframe Recorder & Replay Engine
 docs/
-├── P0_ARCHITECTURE.md            # P0 Pipeline & Component Specifications
-├── P0_PROTOTYPE_STATUS.md        # Implementation Checklist & Phase Log
+├── P1_DEMO_POLISH.md             # P1 Demo Architecture & Presentation Flow
+├── P0_FUNCTIONAL_VERIFICATION.md # Unvarnished Verification Report & Truth Checks
 └── P0_TEST_RESULTS.md           # Empirical Test Metrics & Evidence Classifications
 ```
 
 ---
 
-## How to Run the Prototype
-
-### Method 1: Local HTTP Server (Recommended)
-Using Python or any local web server:
-```bash
-# Navigate to workspace root
-cd "d:\iqoo winning submission for chennai"
-
-# Start lightweight HTTP server on port 8000
-python -m http.server 8000
-# OR
-npx serve .
-```
-Then open your browser and navigate to:
-`http://localhost:8000/prototype/index.html`
-
-### Method 2: Direct File Open
-Open `prototype/index.html` directly in modern web browsers (Chrome, Edge, Firefox, Safari) with web camera permissions enabled.
-
----
-
-## License & Attribution
+## 📜 License & Attribution
 - Built with MediaPipe Tasks Vision SDK (Apache 2.0).
 - Rendered with Three.js WebGL Library (MIT License).
