@@ -1,31 +1,25 @@
-# Blendshapes & FACS Action Units Fundamentals
+# Blendshapes, Action Units & Motion Parameterization
 
 ## Definition [FACT]
-A Blendshape (or Morph Target) is a computer graphics technique for keyframe-free facial animation where predefined 3D mesh deformations are combined weighted by scalar coefficients. FACS Action Units represent anatomical muscle contractions.
+A Blendshape (or Morph Target) is a 3D graphics technique where predefined mesh deformations are combined weighted by scalar coefficients. FACS Action Units represent anatomical muscle contractions.
 
-## Why it Matters to MocapLens AI [DESIGN PROPOSAL]
-Blendshapes form a candidate bridge between the on-device AI regression engine and the 3D avatar rendering viewport. Regressing standardized blendshapes allows MocapLens AI to drive compatible 3D character meshes.
+## Core Architectural Separation [DESIGN PROPOSAL]
+To maintain modularity, MocapLens AI distinguishes between internal tracking parameters and target character animation controls:
 
-## Core Concepts [FACT]
-1. **Neutral Base Mesh ($B_0$)**:
-   - Represents the subject's face at rest with zero muscle activation ($w_i = 0$).
-2. **Delta Vectors ($\Delta B_i = B_i - B_0$)**:
-   - Geometric displacement of each vertex from the neutral state to maximum expression intensity ($w_i = 1.0$).
-3. **ARKit 52 Blendshape Categories [PAPER-REPORTED]**:
-   - Standard set of 52 facial coefficients covering Eyes, Jaw, Mouth/Lips, Eyebrows, and Cheeks/Nose.
+```text
+Internal Motion Representation (Canonical Parameter Set)
+                ↓
+    Retargeting Engine (Gain & Sensitivity Remap)
+                ↓
+Avatar Output Representation (Target 3D Character Mesh)
+```
 
-## Important Equations & Technical Details [FACT]
-- **Vertex Deformation Formula**:
-  $$P_j(w) = P_{j,0} + \sum_{i=1}^{K} w_i \cdot \Delta P_{j,i}$$
-  where $P_j(w)$ is the position of 3D mesh vertex $j$, $P_{j,0}$ is its neutral position, and $\Delta P_{j,i}$ is the position offset vector for blendshape $i$.
+1. **INTERNAL MOTION REPRESENTATION**:
+   - Proposed Candidate: 52 ARKit-compatible coefficient array `[DESIGN PROPOSAL]`.
+   - Reason: Provides a balanced, high-resolution parameter space covering independent left/right eye tracking, brows, jaw, mouth, and cheek movements.
+2. **AVATAR OUTPUT REPRESENTATION**:
+   - Target mesh morph target dictionary bindings (e.g., Ready Player Me GLTF morph targets, VRoid anime shape keys, Blender Shape Keys).
+   - Retargeting layer handles missing morph channels, channel remapping, and sensitivity gain curves ($w_{avatar} = \text{clamp}(\gamma \cdot w_{internal}^p, 0.0, 1.0)$).
 
-## Relevant Papers & Academic Citations [PAPER-REPORTED]
-- Alexander, O., et al. (2010). "The Digital Emily Project: Achieving Photorealism in Real-Time." *IEEE CG&A*, 30(4), 20-31.
-- Thies, J., et al. (2016). "Face2Face: Real-time Face Capture and Reenactment of RGB Videos." *IEEE CVPR*.
-
-## Candidate Technology Evaluation [CANDIDATE TECHNOLOGY]
-- Candidate model: MediaPipe `FaceLandmarker` with `setOutputFaceBlendshapes(true)` directly outputs 52 blendshapes `[UNVERIFIED - TO BE EVALUATED IN STAGE 1]`.
-- Alternative candidate model: Custom TFLite/LiteRT FACS Action Unit or blendshape regressor model trained on 3DMM dataset `[CANDIDATE TECHNOLOGY]`.
-
-## Known Limitations [FACT]
-- Characters with custom or non-standard topology (e.g. anime characters with non-human mouth proportion) require custom retargeting remap curves ($w'_{target} = f(w_{source})$).
+## Assumption Status Notice [AUDIT NOTICE]
+- **Assumption A06** ("52 coefficients are sufficient to drive target avatars without expression loss") remains **OPEN** and will be experimentally evaluated across multiple 3D avatar topologies during Stage 2.

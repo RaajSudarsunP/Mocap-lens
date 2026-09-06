@@ -3,48 +3,47 @@
 ## Definition [FACT]
 Device Communication in MocapLens AI is the low-latency network telemetry architecture responsible for serializing telemetry parameter array packets (blendshape weights, head pose) on the smartphone and transmitting them to the laptop 3D engine over local transport channels.
 
-## Why it Matters to MocapLens AI [DESIGN PROPOSAL]
-Transmitting full high-resolution video streams from phone to laptop requires significant bandwidth ($15-30\text{ Mbps}$) and incurs video encoding/decoding latency. By processing AI on device and transmitting raw parameter arrays, MocapLens AI aims to minimize network bandwidth and transport latency.
+## Authoritative Telemetry Binary Packet Specification [AUTHORITATIVE SPECIFICATION]
 
-## Core Concepts & Payload Calculations [FACT & AUDIT CORRECTION]
-1. **Parameter Transfer vs. Video Transfer**:
-   - *Video Transfer*: $1920 \times 1080 \times 60 \text{ FPS} \implies$ Heavy video compression (H.264/H.265), higher encode/decode lag.
-   - *Telemetry Transfer*: Transmits scalar parameter arrays representing face geometry and pose.
-2. **Payload & Packet Size Audit Breakdown [FACT]**:
-   - **Raw Data Components**:
-     - 52 Blendshape Floats ($52 \times 4 \text{ bytes} = 208 \text{ bytes}$).
-     - Head Rotation Quaternion ($4 \times 4 \text{ bytes} = 16 \text{ bytes}$).
-     - Head Translation Vector ($3 \times 4 \text{ bytes} = 12 \text{ bytes}$).
-     - Timestamp ($1 \times 8 \text{ bytes} = 8 \text{ bytes}$, Float64).
-     - Frame Index / Sequence ID ($1 \times 4 \text{ bytes} = 4 \text{ bytes}$, UInt32).
-     - **Total Application Layer Payload = 248 Bytes**.
-   - **Protocol Overhead & Network Transport Size**:
-     - **Binary over UDP**:
-       - UDP Header: 8 bytes.
-       - IPv4 Header: 20 bytes (or IPv6: 40 bytes).
-       - **Total Transmitted UDP/IP Packet Size $\approx 276 \text{ bytes}$ per frame**.
-       - Bandwidth at target 60 Hz: $276 \text{ bytes/frame} \times 60 \text{ Hz} = 16,560 \text{ bytes/sec} \approx 16.56 \text{ KB/s} \quad (0.132 \text{ Mbps})$.
-     - **Binary over TCP / WebSocket**:
-       - WebSocket Framing Header: 2–6 bytes.
-       - TCP Header: 20–32 bytes.
-       - IP Header: 20 bytes.
-       - **Total Transmitted TCP/IP Packet Size $\approx 296 \text{ bytes}$ per frame**.
-       - Bandwidth at target 60 Hz: $296 \times 60 = 17,760 \text{ bytes/sec} \approx 17.76 \text{ KB/s} \quad (0.142 \text{ Mbps})$.
-     - **JSON Format over WebSocket (Debugging Mode)**:
-       - JSON string with key-value pairs (`{"jawOpen":0.82,"headQuat":[1,0,0,0],...}`): $\sim 1,150 \text{ bytes}$.
-       - Total Transmitted Size with TCP/IP overhead: $\sim 1,200 \text{ bytes}$ per frame.
-       - Bandwidth at 60 Hz: $1,200 \times 60 \approx 72.0 \text{ KB/s} \quad (0.576 \text{ Mbps})$.
-3. **Transport Protocol Characteristics**:
-   - **UDP**: Unreliable datagrams; lowest transport latency; missing packets are acceptable in real-time telemetry (next frame supersedes stale data).
-   - **TCP / WebSockets with `TCP_NODELAY`**: Reliable stream; setting `TCP_NODELAY` disables Nagle's packet aggregation algorithm to force immediate transmission.
+The binary telemetry packet structure is standardized as follows:
 
-## Relevant Papers & Academic Citations [PAPER-REPORTED]
-- Postel, J. (1980). "User Datagram Protocol." *RFC 768*.
-- Fette, I., & Melnikov, A. (2011). "The WebSocket Protocol." *RFC 6455*.
+| Field Name | Datatype | Byte Offset | Size (Bytes) | Description |
+|---|---|---|---|---|
+| **Magic Header** | UInt16 | 0 | 2 | Protocol identifier (`0x4D43` = "MC") |
+| **Protocol Version & Flags** | UInt16 | 2 | 2 | Version (`0x01`) and status flags |
+| **Sequence Number** | UInt32 | 4 | 4 | Monotonic incrementing frame index |
+| **Timestamp** | Float64 | 8 | 8 | Unix timestamp in milliseconds |
+| **Tracking Confidence** | Float32 | 16 | 4 | Landmark tracking presence score $[0.0, 1.0]$ |
+| **Head Rotation Quaternion** | $4 \times \text{Float32}$ | 20 | 16 | $[q_w, q_x, q_y, q_z]$ normalized rotation |
+| **Head Translation Vector** | $3 \times \text{Float32}$ | 36 | 12 | $[T_x, T_y, T_z]$ translation in mm |
+| **Motion Parameter Vector** | $52 \times \text{Float32}$ | 48 | 208 | $[w_1 \dots w_{52}]$ blendshape float weights |
+| **Padding / Alignment** | Bytes | 256 | 4 | Zero-padded to 64-bit boundary |
+| **TOTAL APPLICATION PAYLOAD** | — | — | **260 Bytes** | **Exact Binary Payload Size** |
 
-## Engineering Recommendations [DESIGN PROPOSAL]
-- Binary `ArrayBuffer` payload structure is recommended for production to minimize serialization CPU overhead.
-- Set `socket.setTcpNoDelay(true)` in Android socket implementations if using TCP/WebSockets to force immediate packet flushing.
+---
 
-## Known Limitations & Transport Verification [UNVERIFIED]
-- Wi-Fi network congestion in public venues can cause packet arrival jitter; transport layer performance and packet loss rate must be measured experimentally on target hardware.
+## Authoritative Transport Layer Packet & Bandwidth Audit
+
+1. **Binary over UDP Datagram Protocol**:
+   - Application Payload: 260 bytes
+   - UDP Header: 8 bytes
+   - IPv4 Header: 20 bytes
+   - **Total Transmitted UDP/IP Packet Size: 288 Bytes**.
+   - Network Bandwidth at target 60 Hz: $288 \times 60 = 17,280 \text{ bytes/sec} \approx 17.28 \text{ KB/s} \quad (0.138 \text{ Mbps})$.
+
+2. **Binary over TCP / WebSocket Protocol**:
+   - Application Payload: 260 bytes
+   - WebSocket Framing Header: 4 bytes
+   - TCP Header: 24 bytes
+   - IPv4 Header: 20 bytes
+   - **Total Transmitted TCP/WebSocket Packet Size: 308 Bytes**.
+   - Network Bandwidth at target 60 Hz: $308 \times 60 = 18,480 \text{ bytes/sec} \approx 18.48 \text{ KB/s} \quad (0.148 \text{ Mbps})$.
+
+3. **JSON Format over WebSocket (Debugging Mode)**:
+   - JSON String Payload: $\sim 1,150 \text{ bytes}$.
+   - Total Transmitted Size with TCP/IP overhead: $\sim 1,198 \text{ bytes}$.
+   - Network Bandwidth at target 60 Hz: $1,198 \times 60 \approx 71.88 \text{ KB/s} \quad (0.575 \text{ Mbps})$.
+
+## Transport Layer Recommendations [DESIGN PROPOSAL]
+- Binary `ArrayBuffer` UDP or WebSocket payload is recommended for production to minimize network overhead.
+- Set `socket.setTcpNoDelay(true)` in Android socket implementations if using TCP/WebSockets to force immediate packet transmission.

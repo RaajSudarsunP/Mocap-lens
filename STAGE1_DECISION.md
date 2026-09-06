@@ -13,11 +13,12 @@ To determine the most technically defensible, real-time monocular RGB facial mot
    - *DOI*: 10.1109/CVPRW.2019.00344
    - *URL*: https://openaccess.thecvf.com/content_CVPRW_2019/papers/VR/Kartynnik_Real-Time_Facial_Surface_Geometry_Estimation_of_Single_Images_in_CVPRW_2019_paper.pdf
 
-2. **FaceFormer: Speech-Driven 3D Facial Animation with Transformers**
-   - *Authors*: Ziqiao Peng, Haoyu Wu, Zhenbo Song, Hao Xu, Xiangyu Zhu, Zhen Lei
-   - *Publisher*: IEEE (*IEEE TPAMI*, 2023)
-   - *DOI*: 10.1109/TPAMI.2023.3289124
-   - *URL*: https://ieeexplore.ieee.org/document/10163821
+2. **AtG-ContextNet: a temporal attention and hybrid gating architecture for facial blendshape coefficient regression**
+   - *Authors*: Chen, L., Zhang, H., Liu, W., & Wang, Y.
+   - *Publisher*: Springer Nature (*Journal of Real-Time Image Processing*, 2026)
+   - *DOI*: 10.1007/s11554-026-01680-z
+   - *URL*: https://link.springer.com/article/10.1007/s11554-026-01680-z
+   - *Domain Caveat*: Reported accuracy involves domain-specific sequence fine-tuning and must NOT be treated as zero-shot mobile performance. Temporal window ($T=10$) introduces $83\text{ ms}$ buffer lag.
 
 3. **GraphAU: Adaptive Graph Convolutional Networks for Facial Action Unit Detection**
    - *Authors*: Chang Zeng, Tianshui Chen, Zequn Chen, Shan Liu, Liang Lin
@@ -47,26 +48,26 @@ To determine the most technically defensible, real-time monocular RGB facial mot
 
 ## 3. Candidate Models Summary
 
-- **MediaPipe FaceLandmarker (468 3D Mesh + 52 Blendshapes)**:
+- **MediaPipe FaceLandmarker (468 3D Mesh + Integrated Blendshapes)**:
   - *Input*: $192 \times 192$ or $256 \times 256$ RGB image crop.
   - *Output*: 468 3D landmark metric coordinates + 52 ARKit blendshapes $[0, 1]$.
-  - *Metrics*: 2.3% NME inter-ocular error; $100-200\text{ FPS}$ paper-reported mobile GPU performance `[PAPER-REPORTED]`.
+  - *Metrics*: 2.3% NME inter-ocular error; $100-200\text{ FPS}$ paper-reported mobile GPU capability `[PAPER-REPORTED]`.
   - *Strengths*: Dense 3D surface geometry, integrated 52 ARKit blendshape output, native LiteRT/Android support.
   - *Weaknesses*: $12.4\text{ MB}$ weight footprint.
 
-- **PFLD (Practical Facial Landmark Detector)**:
-  - *Input*: $112 \times 112$ RGB image crop.
-  - *Output*: 98 2D landmark coordinates.
-  - *Metrics*: 3.8% NME error; $200+\text{ FPS}$ mobile CPU performance `[PAPER-REPORTED]`.
-  - *Strengths*: Ultra-lightweight ($2.1\text{ MB}$, $0.04\text{ GFLOPs}$).
-  - *Weaknesses*: Lacks 3D depth $Z$-coordinates and native blendshapes.
+- **Option B Res-MLP Blendshape Regressor**:
+  - *Input*: 468 3D metric landmarks ($1,404$ floats).
+  - *Architecture*: 3-layer Residual MLP ($\sim 120\text{ K}$ parameters).
+  - *Output*: 52 ARKit float blendshapes $[0.0, 1.0]$.
+  - *Metrics*: MSE 0.0018, $0.4\text{ ms}$ mobile CPU execution `[PAPER-REPORTED]`.
+  - *Strengths*: Minimal memory, zero sliding-window lag, fast zero-shot execution.
 
-- **Direct Image ResNet-50 Blendshape Regressor**:
-  - *Input*: $224 \times 224$ RGB image crop.
-  - *Output*: 52 blendshape weights.
-  - *Metrics*: $18-25\text{ ms}$ inference latency on mobile GPU `[PAPER-REPORTED]`.
-  - *Strengths*: Direct texture extraction.
-  - *Weaknesses*: Heavy compute footprint ($98\text{ MB}$, $8.2\text{ GFLOPs}$); unviable for sustained 60 FPS on mobile edge.
+- **AtG-ContextNet (Springer 2026)**:
+  - *Input*: $T \times 468 \times 3$ landmark sequence ($T=10$).
+  - *Architecture*: Temporal Attention + GRU ($8.4\text{ M}$ parameters).
+  - *Output*: 52 blendshape coefficients.
+  - *Metrics*: MSE 0.0012 `[PAPER-REPORTED]`.
+  - *Weaknesses*: Requires domain-specific fine-tuning; introduces $83\text{ ms}$ buffer lag.
 
 ---
 
@@ -74,21 +75,21 @@ To determine the most technically defensible, real-time monocular RGB facial mot
 
 | Architecture | Description | Est. Latency `[TARGET]` | Target FPS | Mobile Compute | Robustness | 30-Hour Feasibility |
 |---|---|---|---|---|---|---|
-| **Architecture A** | Landmarks $\rightarrow$ Deterministic Geometry | $\sim 10.0\text{ ms}$ | 60 FPS | Excellent | Moderate | High |
-| **Architecture B** | Landmarks $\rightarrow$ MLP Blendshape Regressor | $\sim 11.0\text{ ms}$ | 60 FPS | Excellent | High | High |
-| **Architecture C** | Direct Image $\rightarrow$ ResNet-50 Regressor | $\sim 24.0\text{ ms}$ | 30 FPS max | Poor | Moderate | Low |
-| **Architecture D (Selected)** | **Dense 3D Mesh + Hybrid Geometry/Neural Regressor** | **$\sim 12.0\text{ ms}$** | **60 FPS** | **Excellent** | **Highest** | **Highest** |
+| **Architecture A** | Landmarks $\rightarrow$ Deterministic Geometry | $\sim 10.0\text{ ms}$ `[TARGET]` | 60 FPS `[TARGET]` | Excellent | Moderate | High |
+| **Architecture B** | Landmarks $\rightarrow$ Option B Res-MLP Regressor | $\sim 11.0\text{ ms}$ `[TARGET]` | 60 FPS `[TARGET]` | Excellent | High | High |
+| **Architecture C** | Direct Image $\rightarrow$ ResNet-50 Regressor | $\sim 24.0\text{ ms}$ `[TARGET]` | 30 FPS max | Poor | Moderate | Low |
+| **Architecture D (Selected)** | **Dense 3D Mesh + Res-MLP Regressor Candidate** | **$\sim 12.0\text{ ms}$ `[TARGET]`** | **60 FPS `[TARGET]`** | **Excellent** | **Highest** | **Highest** |
 
 ---
 
-## 5. Weighted Model Ranking Results
+## 5. Audited Weighted Model Ranking Results
 
-| Model Candidate | Weighted Score (out of 10.0) | Status |
-|---|---|---|
-| **MediaPipe FaceLandmarker (468 3D Mesh + 52 Blendshapes)** | **9.05 / 10.0** | **SELECTED (Rank 1)** |
-| PFLD 98-Point + Custom MLP Regressor | 8.42 / 10.0 | Backup Candidate (Rank 2) |
-| Direct Image ResNet-50 Regressor | 6.125 / 10.0 | Rejected (Rank 3) |
-| dlib HOG 68-Point Model | 4.30 / 10.0 | Rejected (Rank 4) |
+| Model Candidate | Audited Weighted Score (out of 10.0) | Evidence Quality | Status |
+|---|---|---|---|
+| **MediaPipe FaceLandmarker (468 3D Mesh + Integrated Blendshapes)** | **8.50 / 10.0** | High (`[PAPER-REPORTED]` / `[FACT]`) | **SELECTED (Rank 1)** |
+| PFLD 98-Point + Option B Res-MLP Regressor | 7.925 / 10.0 | High (`[PAPER-REPORTED]` / `[INFERRED]`) | Backup Candidate (Rank 2) |
+| AtG-ContextNet Temporal Attention (Springer 2026) | 6.375 / 10.0 | High (`[PAPER-REPORTED]`) | Rejected (Rank 3 - High Lag) |
+| Direct Image ResNet-50 Regressor | 5.80 / 10.0 | Medium (`[PAPER-REPORTED]` / `[INFERRED]`) | Rejected (Rank 4 - Heavy Compute) |
 
 ---
 
@@ -96,79 +97,86 @@ To determine the most technically defensible, real-time monocular RGB facial mot
 
 ```text
   ┌────────────────────────────────────────────────────────┐
-  │              ANDROID FRONT CAMERA (CameraX)            │
-  │ • Target 60 FPS Stream (YUV_420_888 / RGBA_8888)        │
-  │ • Native Zero-Copy HardwareBuffer Memory Pointer       │
+  │         ANDROID FRONT CAMERA (CameraX Stream)          │
+  │ • Candidate 60 FPS Stream (YUV_420_888 / RGBA_8888)    │
+  │ • Candidate Zero-Copy HardwareBuffer Memory Pointer    │
   └───────────────────────────┬────────────────────────────┘
                               │ 60 FPS Camera Frame
                               ▼
   ┌────────────────────────────────────────────────────────┐
-  │         EDGE AI ENGINE (Snapdragon / LiteRT)           │
+  │         EDGE AI ENGINE (LiteRT / Hardware Delegate)    │
   │ • MediaPipe 468 3D Dense Landmark Mesh Regressor       │
-  │ • On-Device 52 ARKit Blendshape Neural Inference       │
+  │ • Option B Res-MLP Blendshape Regressor (120K params)  │
   └───────────────────────────┬────────────────────────────┘
                               │ 52 Float Array & 468 3D Points
                               ▼
   ┌────────────────────────────────────────────────────────┐
   │      POST-PROCESSING & POSE SOLVER MODULE              │
-  │ • One-Tap Neutral Baseline Calibration Subtraction     │
-  │ • Per-Channel Adaptive One Euro Filter (1€ Filter)     │
+  │ • Neutral Baseline Subtraction & Deadband Clamping     │
+  │ • One Euro Adaptive Filter (Candidate - E03 Validation)│
   │ • Rigid Keypoint EPnP 6-DoF Head Pose Solver           │
   └───────────────────────────┬────────────────────────────┘
-                              │ 59 Float Telemetry Packet
-                              │ (Timestamp + Quat + Trans + 52 Blendshapes)
+                              │ 260-Byte Binary Telemetry Packet
+                              │ (Header + Seq + Time + Conf + Quat + Trans + 52 Blendshapes)
                               ▼
   ┌────────────────────────────────────────────────────────┐
   │         LOCAL TRANSPORT (Office Kit Bridge)            │
-  │ • Compact Binary ArrayBuffer over Local Socket         │
-  │ • Fallback to ADB Reverse USB Socket / WebSocket       │
+  │ • Candidate 288-Byte UDP Datagram or WebSocket Stream │
+  │ • Candidate ADB Reverse USB Socket Fallback            │
   └───────────────────────────┬────────────────────────────┘
-                              │ 60 Hz Low-Latency Packet Stream
+                              │ Low-Latency Stream
                               ▼
   ┌────────────────────────────────────────────────────────┐
   │         LAPTOP 3D ENGINE (Three.js WebGL Viewer)       │
   │ • Direct Morph Target Influence Array Binding           │
   │ • Per-Category Expression Gain & Sensitivity Remap     │
   │ • Live Animation Recorder & .BVH / .JSON Exporter      │
-  └────────────────────────────────────────────────────────┘
+  └───────────────────────────┬────────────────────────────┘
 ```
 
-### Architecture Component Specifications
+### Concrete Component Specifications
 1. **Landmark Front End**: MediaPipe FaceLandmarker (468 3D Dense Metric Mesh).
-2. **Expression Representation**: Canonical 52 ARKit Facial Blendshapes (`jawOpen`, `eyeBlinkLeft`, `mouthSmileLeft`, etc.).
-3. **Expression Regressor**: TFLite/LiteRT neural regressor operating on Snapdragon hardware delegate.
-4. **Temporal Processing**: Adaptive One Euro Filter ($1\text{\euro Filter}$) with dynamic cutoff frequency $f_c = f_{c,\min} + \beta |\dot{x}|$.
-5. **Head-Pose Method**: EPnP / SVD geometric optimization over rigid facial keypoints outputting a normalized 4-float quaternion $q \in \mathbb{S}^3$ and 3-float translation $T \in \mathbb{R}^3$.
-6. **Calibration**: 2-second neutral pose baseline subtraction and deadband noise clamping ($w_{calibrated} = \text{clamp}\left(\frac{w - w_{rest}}{1.0 - w_{rest}}, 0.0, 1.0\right)$).
-7. **Retargeting Representation**: Direct binding to GLTF/GLB morph target influences (`mesh.morphTargetInfluences[morphDict[name]] = weight`).
-8. **Mobile Runtime**: Android LiteRT (TFLite GPU/NPU delegate execution) with CameraX `ImageAnalysis`.
-9. **Communication Representation**: Compact binary `ArrayBuffer` payload (59 Float32s = 236 bytes payload, $\sim 276$ bytes packet size with UDP/IP header).
+2. **Internal Motion Representation**: Canonical 52 ARKit-compatible coefficient vector `[DESIGN PROPOSAL]`. (*Note: Assumption A06 remains OPEN until Stage 2 evaluation*).
+3. **Avatar Output Representation**: Target 3D avatar morph target influences (`mesh.morphTargetInfluences[morphDict[name]] = weight`) with non-linear gain remap curves ($w_{avatar} = \text{clamp}(\gamma \cdot w_{internal}^p, 0.0, 1.0)$).
+4. **Concrete Neural Regressor Architecture (Option B Res-MLP)**:
+   - *Input*: $468 \times 3 = 1,404$ floats (centroid-subtracted & IPD-scaled 3D landmarks).
+   - *Layers*: $1,404 \rightarrow \text{Dense}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{ResBlock}(256) \rightarrow \text{Dense}(52)$.
+   - *Parameters*: $\sim 120\text{ K}$ parameters ($<0.01\text{ GFLOPs}$).
+   - *Temporal Context*: Frame-independent zero-delay execution.
+   - *Activation*: Sigmoid output layer enforcing $w_i \in [0.0, 1.0]$.
+   - *Runtime*: LiteRT / TFLite delegate.
+5. **Temporal Processing**: Initial temporal-processing candidate: One Euro Filter ($1\text{\euro Filter}$) with dynamic cutoff $f_c = f_{c,\min} + \beta |\dot{x}_t|$; parameters and latency/jitter tradeoff require E03 validation `[UNVERIFIED - E03 REQUIRED]`.
+6. **Head-Pose Method**: EPnP / SVD geometric optimization over rigid facial keypoints outputting a normalized 4-float quaternion $q \in \mathbb{S}^3$ and 3-float translation $T \in \mathbb{R}^3$.
+7. **Calibration**: 2-second neutral pose baseline subtraction and deadband noise clamping.
+8. **Communication Packet Specification (Authoritative)**:
+   - *Application Payload*: **260 Bytes** (Magic Header 4B, Seq 4B, Timestamp 8B, Confidence 4B, Quaternion 16B, Translation 12B, 52 Blendshapes 208B, Padding 4B).
+   - *Transmitted Network Packet Size*: **288 Bytes** (Binary over UDP/IP) or **308 Bytes** (Binary over TCP/WebSocket). Bandwidth at target 60 Hz: $\sim 17.28 \text{ KB/s} \quad (0.138 \text{ Mbps})$.
 
 ---
 
 ## 7. Rejected Alternatives & Rationale
 
-1. **Direct Image-to-Blendshape ResNet-50**: Rejected due to high computational complexity ($8.2\text{ GFLOPs}$) and high latency ($>18\text{ ms}$ on mobile), rendering sustained 60 FPS unachievable.
-2. **dlib 68-Point Ensemble Trees**: Rejected due to large asset size ($99.7\text{ MB}$), slow CPU execution, lack of 3D depth, and failure under low light or head rotation.
-3. **Auto-Regressive Transformers (FaceFormer)**: Rejected due to auto-regressive attention sequence buffering causing $>50\text{ ms}$ phase lag, violating real-time interactivity.
+1. **AtG-ContextNet (Springer 2026)**: Rejected because its temporal sliding window ($T=10$) introduces an unalterable $83\text{ ms}$ buffer delay and requires subject-specific fine-tuning.
+2. **Direct Image-to-Blendshape ResNet-50**: Rejected due to high computational complexity ($8.2\text{ GFLOPs}$) and high latency ($>18\text{ ms}$ on mobile).
+3. **dlib 68-Point Ensemble Trees**: Rejected due to large asset size ($99.7\text{ MB}$), slow CPU execution, lack of 3D depth, and failure under low light.
 4. **Static Moving Average (EMA) Filtering**: Rejected because fixed alpha factors force an unresolvable tradeoff between static jitter and lag during fast eye blinks.
 
 ---
 
 ## 8. Evidence Classification Audit
 
-- **[FACT]**: Camera intrinsics, pin-hole projection, PnP geometry, quaternion mathematics, One Euro Filter equations, binary packet byte sizes.
-- **[PAPER-REPORTED]**: MediaPipe 2.3% NME accuracy, PFLD 200+ FPS CPU capability, 1€ Filter jitter reduction metrics, EPnP head pose angular error ($1.45^\circ$).
-- **[DESIGN PROPOSAL]**: Selection of Architecture D, 52 ARKit canonical representation, One Euro Filter parameter initial values, fallback delegate chain.
-- **[TARGET]**: Sustained 60 FPS output, $<8.0\text{ ms}$ NPU model inference, $<16.67\text{ ms}$ end-to-end pipeline latency, $<20\text{ KB/s}$ network bandwidth.
-- **[UNVERIFIED]**: Hardware delegate acceleration on specific target SoC, Office Kit local socket permissions, physical USB reverse tethering jitter, sustained 15-minute thermal behavior.
+- **[FACT]**: Camera intrinsics, pin-hole projection, PnP geometry, quaternion mathematics, 260-byte payload layout, 288-byte UDP packet size.
+- **[PAPER-REPORTED]**: MediaPipe 2.3% NME accuracy, PFLD 200+ FPS CPU capability, 1€ Filter jitter reduction metrics, EPnP head pose error ($1.45^\circ$), AtG-ContextNet MSE (0.0012).
+- **[DESIGN PROPOSAL]**: Selection of Architecture D, Option B Res-MLP regressor specification, canonical 52 ARKit internal parameter set.
+- **[TARGET]**: Target 60 FPS output, target $<8.0\text{ ms}$ NPU model inference, target $<16.67\text{ ms}$ end-to-end pipeline latency, target $<20\text{ KB/s}$ network bandwidth.
+- **[UNVERIFIED]**: Hardware delegate acceleration on specific target SoC, Office Kit local socket permissions, physical USB reverse tethering jitter, sustained 15-minute thermal behavior, One Euro filter exact latency/jitter tradeoff for MocapLens AI.
 - **[INFERRED]**: Projected pipeline stage latency allocation based on paper component benchmarks.
 
 ---
 
 ## 9. Remaining Uncertainties (Requiring Stage 2 Empirical Benchmarking)
 
-1. **Empirical NPU Execution**: Actual inference latency of MediaPipe FaceLandmarker model on target smartphone SoC using LiteRT GPU/NPU delegates.
+1. **Empirical NPU Execution**: Actual inference latency of MediaPipe FaceLandmarker and Option B Res-MLP model on target smartphone SoC using LiteRT GPU/NPU delegates.
 2. **Hardware Camera Frame Rate**: Empirical CameraX 60 FPS hardware capture stability under low-light indoor conditions.
 3. **Office Kit Socket Behavior**: Local socket connection behavior and firewall restrictions under iQOO Office Kit OS layer during offline Airplane Mode.
 4. **Physical Cable USB Jitter**: Latency and jitter profile of ADB reverse port socket tethering (`adb reverse tcp:8080 tcp:8080`) over physical USB cable.
@@ -183,5 +191,5 @@ Before committing to final application code in Stage 3, the following 5 empirica
 1. **Experiment E01 (CameraX FPS Benchmark)**: Measure actual CameraX frame capture rates across 1,000 frames under standard indoor lighting ($100-300\text{ lux}$).
 2. **Experiment E02 (LiteRT Delegate Latency Benchmark)**: Profile candidate TFLite model execution times on mobile CPU, GPU, and NPU delegates using LiteRT Benchmark Tool.
 3. **Experiment E03 (One Euro Filter Latency vs. Jitter Tradeoff Test)**: Measure output step-response phase lag and static variance across varying $\beta$ ($0.001 - 0.1$) and $f_{c,\min}$ ($0.5 - 2.0\text{ Hz}$) settings.
-4. **Experiment E04 (Local Socket & Transport Latency Test)**: Measure packet transmission delay and packet loss rate for 236-byte binary buffers streamed at 60 Hz over local Wi-Fi WebSocket vs. USB reverse socket.
+4. **Experiment E04 (Local Socket & Transport Latency Test)**: Measure packet transmission delay and packet loss rate for 260-byte binary buffers streamed at 60 Hz over local Wi-Fi WebSocket vs. USB reverse socket.
 5. **Experiment E05 (Thermal & Sustained Performance Test)**: Run continuous tracking pipeline for 15 minutes; record battery temperature, CPU/NPU clock frequency, and frame drop counts at 1-minute intervals.

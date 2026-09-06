@@ -23,10 +23,10 @@ STATUS: [UNVERIFIED | EXPERIMENTALLY VERIFIED]
 ## Registered Claims
 
 ### Claim C01: Sustained 60 FPS Capture
-- **CLAIM**: MocapLens AI achieves sustained 60 FPS camera capture and frame processing on target mobile hardware.
-- **EVIDENCE**: Pending empirical device benchmark.
+- **CLAIM**: MocapLens AI aims to achieve sustained 60 FPS camera capture and frame processing on target mobile hardware.
+- **EVIDENCE**: Pending empirical device benchmark (Experiment E01).
 - **DEVICE**: Target smartphone (To Be Tested).
-- **MODEL / RUNTIME**: Candidate CameraX pipeline + MediaPipe / TFLite delegate.
+- **MODEL / RUNTIME**: Candidate CameraX pipeline + MediaPipe / LiteRT delegate.
 - **INPUT**: $1920 \times 1080$ @ 60 FPS front camera stream.
 - **RESULT**: TBD (Target: $60.0 \pm 0.5 \text{ FPS}$).
 - **STATUS**: `[UNVERIFIED - TARGET]`
@@ -34,8 +34,8 @@ STATUS: [UNVERIFIED | EXPERIMENTALLY VERIFIED]
 ---
 
 ### Claim C02: Low-Latency On-Device Model Inference
-- **CLAIM**: Candidate facial tracking model executes on-device in $<8.0\text{ ms}$ per frame.
-- **EVIDENCE**: Pending LiteRT / ONNX Runtime benchmark.
+- **CLAIM**: Candidate facial tracking model executes on-device in a low millisecond budget per frame.
+- **EVIDENCE**: Pending LiteRT / ONNX Runtime benchmark (Experiment E02).
 - **DEVICE**: Target mobile SoC (Snapdragon NPU / Adreno GPU).
 - **MODEL / RUNTIME**: Candidate 3D Face Mesh & Blendshape Regressor.
 - **INPUT**: $256 \times 256$ ROI tensor.
@@ -45,7 +45,7 @@ STATUS: [UNVERIFIED | EXPERIMENTALLY VERIFIED]
 ---
 
 ### Claim C03: End-to-End Latency Below 1 Frame Period
-- **CLAIM**: Total end-to-end latency from light capture to laptop 3D avatar deformation is $<16.67\text{ ms}$.
+- **CLAIM**: Total end-to-end latency from light capture to laptop 3D avatar deformation is target $<16.67\text{ ms}$.
 - **EVIDENCE**: Pending end-to-end timestamp synchronization benchmark.
 - **DEVICE**: Mobile Phone + Laptop 3D Viewport.
 - **MODEL / RUNTIME**: Full MocapLens Pipeline.
@@ -57,18 +57,18 @@ STATUS: [UNVERIFIED | EXPERIMENTALLY VERIFIED]
 
 ### Claim C04: Low-Bandwidth Telemetry Network Stream
 - **CLAIM**: Parameter streaming payload consumes $<20\text{ KB/s}$ network bandwidth over local socket bridge.
-- **EVIDENCE**: Pending network socket Wireshark trace.
+- **EVIDENCE**: Pending network socket Wireshark trace (Experiment E04).
 - **DEVICE**: Mobile Phone to Laptop Bridge.
-- **MODEL / RUNTIME**: 59 Float32 Parameter Packet (Binary over WebSocket/UDP).
+- **MODEL / RUNTIME**: Standardized 260-byte Application Payload (Binary over UDP/WebSocket).
 - **INPUT**: 60 Hz parameter array stream.
-- **RESULT**: Calculated theoretical payload: $276 \text{ bytes/packet} \times 60 \text{ Hz} = 16.56 \text{ KB/s}$ (Empirical measurement pending).
+- **RESULT**: Calculated authoritative payload: 260 bytes payload, 288 bytes transmitted UDP/IP packet $\times 60 \text{ Hz} = 17.28 \text{ KB/s} \quad (0.138 \text{ Mbps})$. (Empirical measurement pending E04).
 - **STATUS**: `[UNVERIFIED - THEORETICAL MODEL]`
 
 ---
 
 ### Claim C05: Sustained Thermal Stability
-- **CLAIM**: MocapLens AI operates continuously for $>15$ minutes without thermal throttling or frame rate degradation.
-- **EVIDENCE**: Pending 15-minute empirical thermal soak test.
+- **CLAIM**: MocapLens AI aims to operate continuously for $>15$ minutes without severe thermal throttling or frame rate degradation.
+- **EVIDENCE**: Pending 15-minute empirical thermal soak test (Experiment E05).
 - **DEVICE**: Target smartphone.
 - **MODEL / RUNTIME**: Full mobile tracking pipeline.
 - **INPUT**: Continuous front camera video feed.

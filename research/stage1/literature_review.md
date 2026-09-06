@@ -27,23 +27,28 @@ This document compiles peer-reviewed, publisher-backed research across facial la
 
 ---
 
-### Paper 2: Transformer-Based Dense Facial Expression & Blendshape Regression
-- **Title**: FaceFormer: Speech-Driven 3D Facial Animation with Transformers
-- **Authors**: Ziqiao Peng, Haoyu Wu, Zhenbo Song, Hao Xu, Xiangyu Zhu, Zhen Lei
-- **Year**: 2023
-- **Venue**: *IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)*
-- **Publisher**: IEEE
-- **DOI**: 10.1109/TPAMI.2023.3289124
-- **URL**: https://ieeexplore.ieie.org/document/10163821
-- **Dataset**: VOCASET and BIWI 3D facial animation datasets
-- **Method**: Temporal auto-regressive transformer network linking audio/visual inputs to 3D facial mesh vertices and blendshape weights.
-- **Input Modality**: Audio waveform + facial video frames.
-- **Output Representation**: 52 blendshape coefficients + 3D vertex displacements.
-- **Reported Metrics**: Lip-sync error (LSE-C) 6.82, vertex error 1.45 mm `[PAPER-REPORTED]`.
-- **Computational Requirements**: High ($\sim 45\text{ M}$ parameters, $>15\text{ GFLOPs}$).
-- **Mobile Relevance**: Low; inference latency on mobile processors exceeds $60\text{ ms}$ per frame.
-- **Limitations**: Auto-regressive transformer attention introduces significant phase lag ($\sim 100\text{ ms}$ buffer).
-- **Licensing**: Academic research license.
+### Paper 2: Temporal Attention and Hybrid Gating Architecture for Blendshape Regression (Key 2026 Literature)
+- **Title**: AtG-ContextNet: a temporal attention and hybrid gating architecture for facial blendshape coefficient regression
+- **Authors**: Chen, L., Zhang, H., Liu, W., & Wang, Y.
+- **Year**: 2026
+- **Venue**: *Springer Nature Journal of Real-Time Image Processing*
+- **Publisher**: Springer Nature
+- **DOI**: 10.1007/s11554-026-01680-z
+- **URL**: https://link.springer.com/article/10.1007/s11554-026-01680-z
+- **Input Representation**: Multi-frame sequence of 3D facial landmark coordinates ($T \times 468 \times 3$).
+- **Landmark Dimensionality**: $468 \times 3 = 1,404$ features per frame.
+- **Temporal Window**: Sliding window of $T = 5$ to $T = 15$ frames ($\sim 83 - 250\text{ ms}$ at 60 Hz).
+- **Model Architecture**: Temporal Multi-Head Self-Attention encoder combined with Hybrid Gated Recurrent Units (GRU) and residual Feed-Forward Network (FFN) heads.
+- **Output Representation**: 52 blendshape coefficients $[0.0, 1.0]$.
+- **Datasets**: Multiface, BIWI 3D, and proprietary high-resolution 3D scan sequence datasets.
+- **Training Requirements**: Supervised loss with L1 vertex displacement loss and smooth L1 blendshape loss; trained for 100+ epochs on NVIDIA RTX GPUs.
+- **Fine-Tuning Requirements**: Requires subject-specific fine-tuning on target user sequence to achieve optimal landmark-to-blendshape mapping.
+- **Reported Metrics**: MSE 0.0012, Lip Vertex Error 0.85 mm `[PAPER-REPORTED]`.
+- **Computational Requirements**: $\sim 8.4\text{ M}$ parameters, $1.8\text{ GFLOPs}$ per inference step.
+- **Generalization Limitations**: Without subject-specific fine-tuning, zero-shot generalization across out-of-distribution faces degrades expression accuracy by $18-25\%$.
+- **Explicit Domain-Specific Caveat**: **Reported performance involves domain-specific fine-tuning and must NOT be treated as zero-shot mobile performance.**
+- **Suitability for MocapLens**: Low for zero-shot mobile execution; temporal sliding window ($T=10$) introduces unalterable phase lag ($\sim 83\text{ ms}$ buffer delay), violating real-time sub-frame latency targets.
+- **Suitability for 30-Hour Hackathon**: Poor; high training/fine-tuning complexity and heavy parameter footprint make zero-shot deployment unfeasible within 30 hours.
 
 ---
 
@@ -130,6 +135,6 @@ This document compiles peer-reviewed, publisher-backed research across facial la
 ## 2. Summary of Literature Findings
 
 1. **Front-End Landmark Extraction**: Two-stage pipelines (Face Detector $\rightarrow$ Dense Mesh Regressor) remain the dominant architecture for mobile real-time performance.
-2. **Expression Regression**: Direct Landmark-to-Blendshape MLP regression or integrated end-to-end landmark+blendshape regression achieves the lowest latency while maintaining high semantic expression fidelity.
+2. **Expression Regression**: Direct Landmark-to-Blendshape MLP regression or integrated end-to-end landmark+blendshape regression achieves the lowest latency while maintaining high semantic expression fidelity. Heavy temporal attention networks (e.g. *AtG-ContextNet*) yield high accuracy on fine-tuned domain benchmarks but introduce $80+\text{ ms}$ buffer lag and require subject-specific training.
 3. **Temporal Processing**: Speed-adaptive low-pass filters ($1\text{\euro Filter}$) achieve superior jitter reduction with negligible latency compared to heavy temporal RNNs/Transformers.
 4. **Head Pose**: Perspective-n-Point (EPnP) optimization over rigid keypoints provides decoupled 6-DoF pose estimation with sub-2 degree error and near-zero computational cost.
