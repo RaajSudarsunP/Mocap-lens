@@ -1,107 +1,72 @@
-# Complete Pipeline Architecture Comparison
+# Complete Pipeline Architecture Comparison (Updated with Personalized Avatars)
 
 ## Overview
-This document evaluates candidate end-to-end system architectures for MocapLens AI, comparing full data-flow pipelines from front camera frame acquisition to laptop 3D avatar rendering.
+This document evaluates candidate end-to-end system architectures for MocapLens AI, incorporating both personalized semi-realistic 3D avatar generation and real-time facial motion retargeting.
 
 ---
 
-## 1. Candidate Architecture Descriptions
+## 1. Disentangled Data-Flow Pipeline Architecture
 
-### Architecture A (Pure Deterministic Pipeline)
 ```text
-RGB Camera
-  ↓
-Dense Landmarks (468 3D Points)
-  ↓
-Deterministic Geometric Distance Ratios
-  ↓
-Raw Expression Coefficients
-  ↓
-One Euro Filter
-  ↓
-EPnP Head Pose (Quaternion)
-  ↓
-3D Avatar Morph Targets
+                                RGB CAMERA (CameraX 60 FPS Stream)
+                                                │
+                                                ▼
+                              468-POINT 3D DENSE LANDMARK MESH
+                                                │
+                       ┌────────────────────────┴────────────────────────┐
+                       ▼                                                 ▼
+        IDENTITY / PERSONALIZATION PIPELINE                MOTION / EXPRESSION PIPELINE
+       • Extract facial feature ratios                    • Option B Res-MLP Blendshape Regressor
+         (IPD, jaw width, nose/eye scale)                 • Neutral Baseline Calibration Subtraction
+       • Candidate A3: Deform Template GLTF Mesh          • Channel-Specific One Euro Adaptive Filter
+         (Skeleton bone scales & proportion offsets)      • Rigid Keypoint EPnP 6-DoF Head Pose Solver
+                       │                                                 │
+                       │ Personalized 3D Avatar Rig                      │ 260-Byte Binary Stream
+                       └────────────────────────┬────────────────────────┘
+                                                ▼
+                              OFFICE KIT LOCAL SOCKET BRIDGE
+                                                │
+                                                ▼
+                         THREE.JS / WEBGL PERSONALIZED 3D AVATAR RENDER
 ```
-- **Strengths**: Zero neural model training required; extremely fast.
-- **Weaknesses**: Cannot capture complex non-linear facial expressions (e.g. cheek puff, lip stretch).
 
 ---
 
-### Architecture B (Landmark-Neural Regressor Pipeline)
-```text
-RGB Camera
-  ↓
-Dense Landmarks (468 3D Points)
-  ↓
-Lightweight Landmark-to-Blendshape MLP Regressor
-  ↓
-52 ARKit Blendshapes
-  ↓
-One Euro Filter
-  ↓
-EPnP Head Pose (Quaternion)
-  ↓
-3D Avatar Morph Targets
-```
-- **Strengths**: Captures complex non-linear facial muscle expressions; fast MLP execution ($<0.5\text{ ms}$).
-- **Weaknesses**: Requires normalized 3D landmark preprocessing.
+## 2. Candidate Architecture Comparisons
+
+### Architecture Candidate 1: Generic Avatar + Deterministic Motion
+- Avatar Generation: Static generic GLTF avatar (No personalization).
+- Motion Pipeline: Deterministic landmark ratio calculations.
+- Pros: Simple. Cons: No personalized avatar, low expression quality.
 
 ---
 
-### Architecture C (Direct Image-to-Expression Pipeline)
-```text
-RGB Camera
-  ↓
-Direct CNN/ViT Expression Model
-  ↓
-52 ARKit Blendshapes + Head Rotation
-  ↓
-One Euro Filter
-  ↓
-3D Avatar Morph Targets
-```
-- **Strengths**: Single unified neural network.
-- **Weaknesses**: Heavy compute footprint ($>15\text{ ms}$ on mobile); sensitive to lighting and skin tone; lacks explicit 3D mesh features for debugging.
+### Architecture Candidate 2: Deep AI Avatar Generation + Image Regression (A4 + Arch C)
+- Avatar Generation: Candidate A4 Deep NeRF/DECA Photo-to-3D.
+- Motion Pipeline: Direct Image ResNet-50 Regressor.
+- Pros: Photorealistic offline rendering potential `[PAPER-REPORTED]`.
+- Cons: Heavy compute footprint ($>18\text{ ms}$ motion lag, $>10\text{ sec}$ avatar generation), requires cloud GPUs, unviable for Airplane Mode live demo.
 
 ---
 
-### Architecture D (Hybrid Geometry + Neural Regressor Pipeline) — RECOMMENDED
-```text
-RGB Camera (CameraX 60 FPS Stream)
-  ↓
-Dense 3D Mesh & Blendshape Regressor (MediaPipe / LiteRT NPU Delegate)
-  ↓
-Neutral Pose Baseline Calibration & Deadband Noise Clamping
-  ↓
-Channel-Specific One Euro Adaptive Filter
-  ↓
-Rigid Keypoint EPnP 6-DoF Head Pose Solver (Quaternion)
-  ↓
-Binary Array Packet Serialization (59 Float32 Array)
-  ↓
-Office Kit Local Socket Bridge Transport
-  ↓
-Three.js WebGL 3D Avatar Retargeting & Render
-```
-- **Strengths**: Highest expression fidelity; robust 6-DoF head pose decoupling; zero-copy camera memory pipeline; low latency; zero internet dependency.
-- **Weaknesses**: Requires one-time neutral calibration routine.
+### Architecture Candidate 3: Personalized Template Avatar + Hybrid Motion Pipeline (A3 + Arch D) — RECOMMENDED
+- Avatar Generation: Candidate A3 (Template Avatar + Facial Geometry Deformation). Deforms base semi-realistic GLTF avatar proportions to match user inter-pupillary distance, cheek width, jaw contour, and nose scale.
+- Motion Pipeline: Option B Lightweight Res-MLP Regressor + One Euro Adaptive Filter + EPnP Head Pose.
+- Transport: 260-Byte Binary Packet over Office Kit Local Socket Bridge.
+- Render: Three.js WebGL rendering with real-time morph target influences and bone rotations.
+- Pros: **High personalization quality + zero-latency generation + sustained 60 FPS animation + 100% offline Airplane Mode reliability + 30-hour hackathon feasibility.**
 
 ---
 
-## 2. Architecture Comparison Matrix
+## 3. Evaluation & Recommendation Summary
 
-| Architectural Criteria | Architecture A | Architecture B | Architecture C | Architecture D (Recommended) |
-|---|---|---|---|---|
-| **Expression Fidelity** | Moderate | High | High | **Highest** |
-| **Temporal Stability** | Moderate | High | Low | **Highest** |
-| **Estimated Pipeline Latency** | $\sim 10.0\text{ ms}$ `[TARGET]` | $\sim 11.0\text{ ms}$ `[TARGET]` | $\sim 24.0\text{ ms}$ `[TARGET]` | **$\sim 12.0\text{ ms}$ `[TARGET]`** |
-| **FPS Capability** | Target 60 FPS | Target 60 FPS | 30 FPS max | **Target 60 FPS** |
-| **Mobile Compute Feasibility** | Excellent | Excellent | Poor | **Excellent** |
-| **Lighting & Pose Robustness** | Moderate | High | Moderate | **Highest** |
-| **30-Hour Hackathon Feasibility** | High | High | Low | **Highest** |
+| Pipeline Component | Selection | Justification |
+|---|---|---|
+| **Avatar Personalization** | Candidate A3 (Template + Geometry Deformation) `[DESIGN PROPOSAL]` | Instant generation ($<0.5\text{s}$), preserves pre-bound 52 morph target rigs, 100% offline. |
+| **Landmark Front End** | MediaPipe FaceLandmarker (468 3D Mesh) `[DESIGN PROPOSAL]` | Dense 3D surface topology, native LiteRT Android SDK support. |
+| **Expression Regressor** | Option B Res-MLP Regressor (`120K` params) `[DESIGN PROPOSAL]` | Zero sliding-window lag, lightweight, high expression fidelity. |
+| **Temporal Processing** | One Euro Adaptive Filter ($1\text{\euro Filter}$) `[DESIGN PROPOSAL]` | Dynamic cutoff frequency eliminates static jitter without phase lag (*E03 validation required*). |
+| **Head Pose Solver** | Rigid Keypoint EPnP Solver `[DESIGN PROPOSAL]` | Decouples 6-DoF rotation/translation quaternions from non-rigid muscle expressions. |
+| **Network Transport** | 260-Byte Binary Payload / 288-Byte UDP Packet `[AUTHORITATIVE SPEC]` | Consumes $<18\text{ KB/s}$ bandwidth at 60 Hz; zero video compression lag. |
 
----
-
-## 3. Recommended Architecture Selection
-**Architecture D** is selected as the optimal end-to-end design for MocapLens AI `[DESIGN PROPOSAL]`.
+**Selected Architecture**: **Architecture Candidate 3 (Candidate A3 Personalized Avatar + Candidate Architecture D Motion Pipeline)** `[DESIGN PROPOSAL]`.
