@@ -109,9 +109,9 @@
 <body>
 
 <div id="topbar">
-  <h1>Mocap<span>Lens</span> AI &mdash; Live Mocap Workstation</h1>
+  <h1>Mocap<span>Lens</span> AI — Facial Mocap Workstation</h1>
   <div id="status">
-    <span id="connBadge">&#9679; Local Webcam</span>
+    <span id="connBadge">● Local Webcam</span>
     <div>FPS <b id="fps">--</b></div>
     <div>Infer <b id="infer">--</b> ms</div>
     <div>Face <b id="faceState">searching...</b></div>
@@ -123,11 +123,11 @@
 <div id="stage">
   <div id="camWrap">
     <video id="video" class="mirror" autoplay playsinline muted></video>
-    <div id="camLabel"><span id="dot">&#9679;</span> CAMERA</div>
+    <div id="camLabel"><span id="dot">●</span> CAMERA</div>
   </div>
 
   <div id="avatarOuter">
-    <div id="exprLabel">&#128578; Neutral</div>
+    <div id="exprLabel">Neutral</div>
     <svg id="faceRig" viewBox="0 0 300 300" width="300" height="300">
       <ellipse id="skin" cx="150" cy="150" rx="110" ry="130" fill="#f4c99b"/>
       <ellipse id="cheekL" cx="80" cy="175" rx="0" ry="0" fill="#f4a67a" opacity="0.6"/>
@@ -154,9 +154,9 @@
     <h3>Live Blendshapes</h3>
     <div id="bars"></div>
     <div id="headRow">
-      <div>Yaw <b id="yawVal">0&deg;</b></div>
-      <div>Pitch <b id="pitchVal">0&deg;</b></div>
-      <div>Roll <b id="rollVal">0&deg;</b></div>
+      <div>Yaw <b id="yawVal">0°</b></div>
+      <div>Pitch <b id="pitchVal">0°</b></div>
+      <div>Roll <b id="rollVal">0°</b></div>
     </div>
     <div id="smoothRow">
       <div class="lbl"><span>Smoothing (avatar drive)</span><span id="smoothVal">0.35</span></div>
@@ -169,11 +169,11 @@
 
 <div id="controls">
   <button id="calibrateBtn">Calibrate Neutral</button>
-  <button id="recordBtn" class="record">&#9679; Record Take</button>
+  <button id="recordBtn" class="record">● Record Take</button>
   <button id="downloadCsvBtn" disabled>Download CSV</button>
   <button id="downloadJsonBtn" disabled>Download JSON</button>
-  <button id="playBtn" disabled>&#9654; Play Take</button>
-  <button id="snapshotBtn">&#128247; Snapshot</button>
+  <button id="playBtn" disabled>▶ Play Take</button>
+  <button id="snapshotBtn">Snapshot</button>
   <button id="mirrorBtn">Mirror: On</button>
   <label class="btn">Skin <input id="skinPick" type="color" value="#f4c99b"></label>
 </div>
@@ -279,11 +279,11 @@ function playTake(frames) {
 
     applyAvatar(frames[idx].values);
     updateExpressionLabel(frames[idx].values);
-    faceStateEl.textContent = "playback >";
+    faceStateEl.textContent = "playback ▶";
 
     if (idx >= frames.length - 1 && targetT > frames[frames.length - 1].t) {
       playing = false;
-      faceStateEl.textContent = "detected [OK]";
+      faceStateEl.textContent = "detected ✓";
       document.getElementById("playBtn").disabled = false;
       document.getElementById("recordBtn").disabled = false;
       return;
@@ -336,14 +336,14 @@ document.getElementById("calibrateBtn").onclick = () => {
 document.getElementById("recordBtn").onclick = (e) => {
   recording = !recording;
   e.target.classList.toggle("active", recording);
-  e.target.textContent = recording ? "[■] Stop" : "[●] Record Take";
+  e.target.textContent = recording ? "■ Stop" : "● Record Take";
   if (recording) {
     takeFrames = [];
     takeInfoEl.textContent = "";
   } else if (takeFrames.length) {
     lastTake = takeFrames;
     const durSec = ((takeFrames[takeFrames.length - 1].t - takeFrames[0].t) / 1000).toFixed(1);
-    takeInfoEl.textContent = `Take recorded (${takeFrames.length} frames, ${durSec}s)`;
+    takeInfoEl.textContent = `Take recorded — ${takeFrames.length} frames, ${durSec}s`;
     document.getElementById("downloadCsvBtn").disabled = false;
     document.getElementById("downloadJsonBtn").disabled = false;
     document.getElementById("playBtn").disabled = false;
@@ -412,7 +412,7 @@ async function setup() {
       inferEl.textContent = inferMs.toFixed(1);
 
       if (result.faceBlendshapes && result.faceBlendshapes.length) {
-        faceStateEl.textContent = "detected [OK]";
+        faceStateEl.textContent = "detected ✓";
         const categories = result.faceBlendshapes[0].categories;
         const values = {};
         categories.forEach(c => (values[c.categoryName] = c.score));
@@ -478,9 +478,9 @@ function applyHeadPose(data) {
   const yaw = Math.atan2(data[8], data[0]) * (180 / Math.PI);
   const pitch = Math.atan2(-data[9], data[10]) * (180 / Math.PI);
   const roll = Math.atan2(data[1], data[5]) * (180 / Math.PI);
-  document.getElementById("yawVal").textContent = `${yaw.toFixed(0)}&deg;`;
-  document.getElementById("pitchVal").textContent = `${pitch.toFixed(0)}&deg;`;
-  document.getElementById("rollVal").textContent = `${roll.toFixed(0)}&deg;`;
+  document.getElementById("yawVal").textContent = `${yaw.toFixed(0)}°`;
+  document.getElementById("pitchVal").textContent = `${pitch.toFixed(0)}°`;
+  document.getElementById("rollVal").textContent = `${roll.toFixed(0)}°`;
 }
 
 function applyAvatar(values) {
