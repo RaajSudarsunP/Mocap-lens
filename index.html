@@ -109,7 +109,7 @@
 <body>
 
 <div id="topbar">
-  <h1>Mocap<span>Lens</span> AI — Live Mocap Workstation</h1>
+  <h1>Mocap<span>Lens</span> AI &mdash; Live Mocap Workstation</h1>
   <div id="status">
     <span id="connBadge">&#9679; Local Webcam</span>
     <div>FPS <b id="fps">--</b></div>
@@ -279,11 +279,11 @@ function playTake(frames) {
 
     applyAvatar(frames[idx].values);
     updateExpressionLabel(frames[idx].values);
-    faceStateEl.textContent = "playback ▶";
+    faceStateEl.textContent = "playback >";
 
     if (idx >= frames.length - 1 && targetT > frames[frames.length - 1].t) {
       playing = false;
-      faceStateEl.textContent = "detected ✓";
+      faceStateEl.textContent = "detected [OK]";
       document.getElementById("playBtn").disabled = false;
       document.getElementById("recordBtn").disabled = false;
       return;
@@ -304,17 +304,17 @@ function updateExpressionLabel(values) {
   const jaw = g(values, "jawOpen");
   const smile = (smileL + smileR) / 2;
 
-  let label = "🙂 Neutral";
+  let label = "Neutral";
   if ((blinkL > 0.6 && blinkR < 0.3) || (blinkR > 0.6 && blinkL < 0.3)) {
-    label = "😉 Winking";
+    label = "Winking";
   } else if (browUp > 0.5 && jaw > 0.3) {
-    label = "😮 Surprised";
+    label = "Surprised";
   } else if (browDL > 0.4 && browDR > 0.4 && smile < 0.2) {
-    label = "🙁 Frowning";
+    label = "Frowning";
   } else if (smile > 0.45) {
-    label = "😊 Smiling";
+    label = "Smiling";
   } else if (blinkL > 0.6 && blinkR > 0.6) {
-    label = "😌 Eyes Closed";
+    label = "Eyes Closed";
   }
   document.getElementById("exprLabel").textContent = label;
 }
@@ -336,14 +336,14 @@ document.getElementById("calibrateBtn").onclick = () => {
 document.getElementById("recordBtn").onclick = (e) => {
   recording = !recording;
   e.target.classList.toggle("active", recording);
-  e.target.textContent = recording ? "■ Stop" : "● Record Take";
+  e.target.textContent = recording ? "[■] Stop" : "[●] Record Take";
   if (recording) {
     takeFrames = [];
     takeInfoEl.textContent = "";
   } else if (takeFrames.length) {
     lastTake = takeFrames;
     const durSec = ((takeFrames[takeFrames.length - 1].t - takeFrames[0].t) / 1000).toFixed(1);
-    takeInfoEl.textContent = `Take recorded — ${takeFrames.length} frames, ${durSec}s`;
+    takeInfoEl.textContent = `Take recorded (${takeFrames.length} frames, ${durSec}s)`;
     document.getElementById("downloadCsvBtn").disabled = false;
     document.getElementById("downloadJsonBtn").disabled = false;
     document.getElementById("playBtn").disabled = false;
@@ -412,7 +412,7 @@ async function setup() {
       inferEl.textContent = inferMs.toFixed(1);
 
       if (result.faceBlendshapes && result.faceBlendshapes.length) {
-        faceStateEl.textContent = "detected ✓";
+        faceStateEl.textContent = "detected [OK]";
         const categories = result.faceBlendshapes[0].categories;
         const values = {};
         categories.forEach(c => (values[c.categoryName] = c.score));
@@ -478,9 +478,9 @@ function applyHeadPose(data) {
   const yaw = Math.atan2(data[8], data[0]) * (180 / Math.PI);
   const pitch = Math.atan2(-data[9], data[10]) * (180 / Math.PI);
   const roll = Math.atan2(data[1], data[5]) * (180 / Math.PI);
-  document.getElementById("yawVal").textContent = `${yaw.toFixed(0)}°`;
-  document.getElementById("pitchVal").textContent = `${pitch.toFixed(0)}°`;
-  document.getElementById("rollVal").textContent = `${roll.toFixed(0)}°`;
+  document.getElementById("yawVal").textContent = `${yaw.toFixed(0)}&deg;`;
+  document.getElementById("pitchVal").textContent = `${pitch.toFixed(0)}&deg;`;
+  document.getElementById("rollVal").textContent = `${roll.toFixed(0)}&deg;`;
 }
 
 function applyAvatar(values) {
