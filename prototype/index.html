@@ -1,774 +1,558 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MocapLens — Facial Motion Capture Workstation</title>
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8" />
+<title>MocapLens AI — Demo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #0d0f14;
+    color: #eee;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    overflow: hidden;
+  }
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 14px 22px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, rgba(0,0,0,.55), transparent);
+    z-index: 10;
+  }
+  #topbar h1 { font-size: 18px; margin: 0; letter-spacing: .5px; }
+  #topbar h1 span { color: #6cf7c2; }
+  #status { font-size: 12px; color: #9aa; display: flex; gap: 16px; align-items: center; }
+  #status b { color: #6cf7c2; }
+  #connBadge {
+    font-size: 11px; padding: 3px 9px; border-radius: 20px;
+    background: #1c2130; border: 1px solid #333c52; color: #9db;
+  }
+
+  #stage {
+    display: flex; height: 100vh; width: 100vw;
+    align-items: center; justify-content: center;
+    gap: 34px;
+    padding-top: 60px;
+  }
+
+  #camWrap { position: relative; width: 300px; }
+  #video {
+    width: 300px;
+    border-radius: 16px;
+    background: #000;
+    display: block;
+  }
+  #video.mirror { transform: scaleX(-1); }
+  #camLabel {
+    position: absolute; bottom: 10px; left: 10px;
+    background: rgba(0,0,0,.55);
+    padding: 4px 10px; border-radius: 8px;
+    font-size: 12px;
+  }
+  #dot { color: #ff5d5d; }
+  #dot.live { color: #6cf7c2; }
+
+  #avatarOuter {
+    position: relative;
+    width: 420px; height: 420px;
+    background: radial-gradient(circle at 50% 40%, #1b2030, #0d0f14 70%);
+    border-radius: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #232838;
+    perspective: 700px;
+    overflow: hidden;
+  }
+  #faceRig { transform-style: preserve-3d; }
+
+  #panel {
+    width: 250px;
+    max-height: 78vh;
+    overflow-y: auto;
+    background: rgba(255,255,255,.03);
+    border: 1px solid #232838;
+    border-radius: 16px;
+    padding: 14px 16px;
+  }
+  #panel h3 { margin: 0 0 8px; font-size: 12px; color: #8fa; letter-spacing: .5px; text-transform: uppercase; }
+  .row { margin-bottom: 7px; }
+  .row .lbl { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; color: #cdd; }
+  .bar { height: 6px; background: #1c2130; border-radius: 4px; overflow: hidden; }
+  .fill { height: 100%; width: 0%; background: linear-gradient(90deg,#6cf7c2,#4fb3ff); transition: width .05s linear; }
+  #headRow { display:flex; gap:10px; font-size:11px; color:#9db; margin-top:10px; padding-top:10px; border-top:1px solid #232838; }
+  #smoothRow { margin-top: 10px; padding-top: 10px; border-top: 1px solid #232838; }
+  #smoothRow .lbl { display:flex; justify-content:space-between; font-size:11px; color:#cdd; margin-bottom:4px; }
+  #smoothRow input[type=range] { width: 100%; }
+  #exprLabel {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    font-size: 13px; background: rgba(0,0,0,.5); padding: 5px 14px; border-radius: 20px;
+    color: #dfe; z-index: 5;
+  }
+
+  #controls {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 10; align-items: center;
+  }
+  button, label.btn {
+    background: #1c2130; color: #eee; border: 1px solid #333c52;
+    padding: 9px 16px; border-radius: 10px; font-size: 12px; cursor: pointer;
+  }
+  button.record { border-color: #ff5d5d; }
+  button.record.active { background: #ff5d5d33; }
+  button:hover, label.btn:hover { filter: brightness(1.2); }
+  button:disabled { opacity: .4; cursor: default; }
+  #skinPick { width: 28px; height: 28px; border: none; border-radius: 6px; padding: 0; background: none; vertical-align: middle; cursor: pointer; }
+
+  #roadmap {
+    position: fixed; bottom: 24px; right: 22px;
+    font-size: 11px; color: #778; max-width: 220px; line-height: 1.5;
+  }
+  #takeInfo { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #6cf7c2; }
+</style>
 </head>
 <body>
 
-  <!-- Material 3 Studio Header -->
-  <header>
-    <div class="brand">
-      <span class="brand-title">MocapLens</span>
-      <span class="brand-tag">P1 DEMO WORKSTATION</span>
-    </div>
+<div id="topbar">
+  <h1>Mocap<span>Lens</span> AI — Prototype</h1>
+  <div id="status">
+    <span id="connBadge">● Local Webcam</span>
+    <div>FPS <b id="fps">--</b></div>
+    <div>Infer <b id="infer">--</b> ms</div>
+    <div>Face <b id="faceState">searching…</b></div>
+    <div>Avg FPS <b id="avgFps">--</b></div>
+    <div>Session <b id="sessionTime">00:00</b></div>
+  </div>
+</div>
 
-    <div class="header-status">
-      <div class="acquisition-badge">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="acquisition-text">Live Tracking</span>
-      </div>
-      <div class="fps-badge" id="status-fps">58 FPS</div>
-    </div>
-  </header>
-
-  <!-- Main Studio Stage -->
-  <main class="studio-stage">
-
-    <!-- Hero 3D Avatar Viewport -->
-    <section class="avatar-hero-viewport">
-      <div id="avatar-container"></div>
-    </section>
-
-    <!-- Picture-in-Picture Live Camera Preview (Reference layout) -->
-    <div class="camera-pip-container">
-      <div class="camera-header">
-        <span class="camera-title">Camera (Live)</span>
-        <button class="camera-resync-btn" id="btn-resync-cam" title="Re-sync camera feed">🔄</button>
-      </div>
-
-      <video id="webcam-video" playsinline muted></video>
-      <canvas id="camera-canvas"></canvas>
-
-      <div class="camera-badges-footer">
-        <span class="cam-badge-pill" id="badge-face-detected">
-          <span class="badge-dot green"></span> Face Detected
-        </span>
-        <span class="cam-badge-pill" id="badge-landmarks">
-          <span class="badge-dot grey"></span> 468 Landmarks
-        </span>
-      </div>
-
-      <div class="camera-device-bar">
-        <select id="camera-select" class="camera-select-input">
-          <option value="">Syncing camera devices...</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Floating Stage Stepper (Reference layout) -->
-    <div class="floating-stage-stepper" id="floating-stepper">
-      <div class="stepper-item active" id="step-look">
-        <span class="step-icon">📷</span>
-        <span class="step-text">Look at camera</span>
-        <div class="step-indicator-line"></div>
-      </div>
-      <span class="step-arrow">→</span>
-      <div class="stepper-item" id="step-face">
-        <span class="step-icon">⛶</span>
-        <span class="step-text">Face detected</span>
-      </div>
-      <span class="step-arrow">→</span>
-      <div class="stepper-item" id="step-calib">
-        <span class="step-icon">🎛️</span>
-        <span class="step-text">Calibrating...</span>
-      </div>
-      <span class="step-arrow">→</span>
-      <div class="stepper-item completed" id="step-person">
-        <span class="step-icon">✔</span>
-        <span class="step-text">Personalized</span>
-      </div>
-      <span class="step-arrow">→</span>
-      <div class="stepper-item" id="step-live">
-        <span class="step-icon">▶</span>
-        <span class="step-text">Live Performance</span>
-      </div>
-    </div>
-
-    <!-- Permanent Studio Telemetry Sidebar (Reference layout) -->
-    <aside class="studio-sidebar-panel">
-      <!-- Avatar Mode Tabs -->
-      <div class="avatar-tabs-header">
-        <button class="avatar-tab-btn active" id="mode-a3">Human A3</button>
-        <button class="avatar-tab-btn" id="mode-cyber">Cyber</button>
-        <button class="avatar-tab-btn" id="mode-wire">Wireframe</button>
-      </div>
-
-      <!-- Card 1: A3 Personalization -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <span class="sidebar-card-title">A3 Personalization</span>
-          <span class="sidebar-card-status"><span class="check-icon">✔</span> Complete</span>
-        </div>
-        <div class="sidebar-card-subtitle">Personalized from 10 facial proportions</div>
-
-        <div class="prop-bar-list">
-          <div class="prop-bar-row">
-            <span class="prop-name">Face Width</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-face-w" style="width: 82%;"></div></div>
-            <span class="prop-val" id="val-face-w">1.05</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Face Height</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-face-h" style="width: 80%;"></div></div>
-            <span class="prop-val" id="val-face-h">1.02</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Jaw Width</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-jaw-w" style="width: 77%;"></div></div>
-            <span class="prop-val" id="val-jaw-w">0.98</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Chin Projection</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-chin-p" style="width: 86%;"></div></div>
-            <span class="prop-val" id="val-chin-p">1.10</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Eye Spacing</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-eye-s" style="width: 81%;"></div></div>
-            <span class="prop-val" id="val-eye-s">1.03</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Eye Aperture</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-eye-a" style="width: 76%;"></div></div>
-            <span class="prop-val" id="val-eye-a">0.97</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Nose Width</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-nose-w" style="width: 84%;"></div></div>
-            <span class="prop-val" id="val-nose-w">1.08</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Nose Projection</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-nose-p" style="width: 80%;"></div></div>
-            <span class="prop-val" id="val-nose-p">1.02</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Mouth Width</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-mouth-w" style="width: 82%;"></div></div>
-            <span class="prop-val" id="val-mouth-w">1.04</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Cheek Prominence</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-cheek-p" style="width: 83%;"></div></div>
-            <span class="prop-val" id="val-cheek-p">1.06</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 2: Live Expression Values (ARKit 52) -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <span class="sidebar-card-title">Live Expression Values (ARKit 52)</span>
-        </div>
-
-        <div class="prop-bar-list">
-          <div class="prop-bar-row">
-            <span class="prop-name">Jaw Open</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-jaw" style="width: 2%;"></div></div>
-            <span class="prop-val" id="val-jaw">0.00</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Smile Left</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-smile-l" style="width: 62%;"></div></div>
-            <span class="prop-val" id="val-smile-l">0.62</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Smile Right</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-smile-r" style="width: 58%;"></div></div>
-            <span class="prop-val" id="val-smile-r">0.58</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Eye Blink Left</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-blink-l" style="width: 0%;"></div></div>
-            <span class="prop-val" id="val-blink-l">0.00</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Eye Blink Right</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-blink-r" style="width: 0%;"></div></div>
-            <span class="prop-val" id="val-blink-r">0.00</span>
-          </div>
-          <div class="prop-bar-row">
-            <span class="prop-name">Brow Inner Up</span>
-            <div class="prop-track"><div class="prop-fill" id="bar-brow" style="width: 12%;"></div></div>
-            <span class="prop-val" id="val-brow">0.12</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 3: Head Pose (6-DoF) -->
-      <div class="sidebar-card">
-        <div class="sidebar-card-header">
-          <span class="sidebar-card-title">Head Pose (6-DoF)</span>
-        </div>
-        <div class="pose-row-compact">
-          <div class="pose-item"><span class="pose-label">Pitch</span> <span class="pose-val" id="val-pose-pitch">2.1°</span></div>
-          <div class="pose-item"><span class="pose-label">Yaw</span> <span class="pose-val" id="val-pose-yaw">-5.3°</span></div>
-          <div class="pose-item"><span class="pose-label">Roll</span> <span class="pose-val" id="val-pose-roll">1.8°</span></div>
-        </div>
-      </div>
-
-    </aside>
-
-  </main>
-
-  <!-- Material 3 Control Bar -->
-  <footer class="control-bar">
-    <div class="control-group">
-      <button class="m3-button" id="btn-calibrate">Calibrate Neutral</button>
-      <button class="m3-button" id="btn-personalize">Personalize (A3)</button>
-      <button class="m3-button" id="btn-profile-a" title="Test Profile A: Wide, robust face shape">Profile A (Wide)</button>
-      <button class="m3-button" id="btn-profile-b" title="Test Profile B: Narrow, slender face shape">Profile B (Narrow)</button>
-    </div>
-
-    <div class="control-group">
-      <button class="m3-button m3-button-primary" id="btn-record">
-        <span class="record-dot"></span> Start Capture
-      </button>
-      <button class="m3-button" id="btn-replay">Replay Take</button>
-    </div>
-
-    <div class="control-group">
-      <div class="gain-widget">
-        <span>Gain</span>
-        <input type="range" min="0.5" max="2.5" step="0.1" value="1.0" class="gain-slider" id="gain-slider">
-        <span id="gain-label">1.0x</span>
-      </div>
-      <button class="m3-button" id="btn-reset">Reset Demo</button>
-      <button class="m3-button" id="btn-export">Export JSON</button>
-      <button class="m3-button" id="btn-tech-toggle">Technical View</button>
-    </div>
-  </footer>
-
-  <!-- Sub-Footer Attribution matching reference -->
-  <div class="workstation-subfooter">
-    <span class="subfooter-left">MocapLens | Your Motion. Any Character.</span>
-    <span class="subfooter-right">IITM · iQOO Hackathon Prototype</span>
+<div id="stage">
+  <div id="camWrap">
+    <video id="video" class="mirror" autoplay playsinline muted></video>
+    <div id="camLabel"><span id="dot">●</span> CAMERA</div>
   </div>
 
-  <!-- Application Modules -->
-  <script type="module">
-    import { CameraManager } from './src/camera/camera_manager.js';
-    import { FaceLandmarkerManager } from './src/face_tracking/landmarker.js';
-    import { BlendshapeProcessor } from './src/expression/blendshape_processor.js';
-    import { HeadPoseSolver } from './src/pose/head_pose_solver.js';
-    import { OneEuroFilterArray, OneEuroFilter } from './src/filtering/one_euro_filter.js';
-    import { AvatarPersonalizer } from './src/avatar/avatar_personalizer.js';
-    import { ThreeAvatarViewer } from './src/rendering/three_avatar_viewer.js';
-    import { TimelineRecorder } from './src/recorder/timeline_recorder.js';
+  <div id="avatarOuter">
+    <div id="exprLabel">🙂 Neutral</div>
+    <svg id="faceRig" viewBox="0 0 300 300" width="300" height="300">
+      <ellipse id="skin" cx="150" cy="150" rx="110" ry="130" fill="#f4c99b"/>
+      <ellipse id="cheekL" cx="80" cy="175" rx="0" ry="0" fill="#f4a67a" opacity="0.6"/>
+      <ellipse id="cheekR" cx="220" cy="175" rx="0" ry="0" fill="#f4a67a" opacity="0.6"/>
 
-    // DOM Elements
-    const video = document.getElementById('webcam-video');
-    const canvas = document.getElementById('camera-canvas');
-    const avatarContainer = document.getElementById('avatar-container');
+      <g id="browL"><path d="M 65 100 Q 92 88 120 100" stroke="#5b3b28" stroke-width="9" fill="none" stroke-linecap="round"/></g>
+      <g id="browR"><path d="M 180 100 Q 208 88 235 100" stroke="#5b3b28" stroke-width="9" fill="none" stroke-linecap="round"/></g>
 
-    const acquisitionText = document.getElementById('acquisition-text');
-    const statusDot = document.getElementById('status-dot');
-    const statusFps = document.getElementById('status-fps');
-    const camDeviceChip = document.getElementById('cam-device-chip');
-    const camTrackingStatus = document.getElementById('cam-tracking-status');
-    const btnResyncCam = document.getElementById('btn-resync-cam');
-    const cameraSelect = document.getElementById('camera-select');
-    const telemetryDrawer = document.getElementById('telemetry-drawer');
+      <g id="eyeL"><ellipse cx="95" cy="130" rx="18" ry="14" fill="#fff"/><circle cx="95" cy="130" r="7" fill="#222"/></g>
+      <g id="eyeR"><ellipse cx="205" cy="130" rx="18" ry="14" fill="#fff"/><circle cx="205" cy="130" r="7" fill="#222"/></g>
 
-    const techPose = document.getElementById('tech-pose');
-    const techGainVal = document.getElementById('tech-gain-val');
-    const valJaw = document.getElementById('val-jaw');
-    const valBlinkL = document.getElementById('val-blink-l');
-    const valSmileL = document.getElementById('val-smile-l');
-    const valBrow = document.getElementById('val-brow');
+      <ellipse id="noseSneerL" cx="115" cy="150" rx="0" ry="0" fill="#e0a97a" opacity="0.7"/>
+      <ellipse id="noseSneerR" cx="185" cy="150" rx="0" ry="0" fill="#e0a97a" opacity="0.7"/>
 
-    const btnCalibrate = document.getElementById('btn-calibrate');
-    const btnPersonalize = document.getElementById('btn-personalize');
-    const btnProfileA = document.getElementById('btn-profile-a');
-    const btnProfileB = document.getElementById('btn-profile-b');
-    const btnRecord = document.getElementById('btn-record');
-    const btnReplay = document.getElementById('btn-replay');
-    const btnReset = document.getElementById('btn-reset');
-    const btnExport = document.getElementById('btn-export');
-    const btnTechToggle = document.getElementById('btn-tech-toggle');
-    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+      <g id="mouthGroup" transform="translate(150,205)">
+        <rect id="teeth" x="-30" y="-4" width="60" height="10" rx="2" fill="#fff" opacity="0"/>
+        <ellipse id="tongue" cx="0" cy="10" rx="18" ry="6" fill="#c65a5a" opacity="0"/>
+        <path id="mouth" d="M -40 0 Q 0 10 40 0 Q 0 20 -40 0 Z" fill="#7a2d2d"/>
+      </g>
+    </svg>
+  </div>
 
-    const gainSlider = document.getElementById('gain-slider');
-    const gainLabel = document.getElementById('gain-label');
+  <div id="panel">
+    <h3>Live Blendshapes</h3>
+    <div id="bars"></div>
+    <div id="headRow">
+      <div>Yaw <b id="yawVal">0°</b></div>
+      <div>Pitch <b id="pitchVal">0°</b></div>
+      <div>Roll <b id="rollVal">0°</b></div>
+    </div>
+    <div id="smoothRow">
+      <div class="lbl"><span>Smoothing (avatar drive)</span><span id="smoothVal">0.35</span></div>
+      <input id="smoothSlider" type="range" min="0.05" max="1" step="0.05" value="0.35" />
+    </div>
+  </div>
+</div>
 
-    const modeA3 = document.getElementById('mode-a3');
-    const modeCyber = document.getElementById('mode-cyber');
-    const modeWire = document.getElementById('mode-wire');
+<div id="takeInfo"></div>
 
-    // Modules
-    const cameraManager = new CameraManager(video, canvas);
-    const landmarkerManager = new FaceLandmarkerManager();
-    const blendshapeProcessor = new BlendshapeProcessor();
-    const headPoseSolver = new HeadPoseSolver();
-    const avatarViewer = new ThreeAvatarViewer(avatarContainer);
-    const avatarPersonalizer = new AvatarPersonalizer();
-    const timelineRecorder = new TimelineRecorder();
+<div id="controls">
+  <button id="calibrateBtn">Calibrate Neutral</button>
+  <button id="recordBtn" class="record">● Record Take</button>
+  <button id="downloadCsvBtn" disabled>Download CSV</button>
+  <button id="downloadJsonBtn" disabled>Download JSON</button>
+  <button id="playBtn" disabled>▶ Play Take</button>
+  <button id="snapshotBtn">📷 Snapshot</button>
+  <button id="mirrorBtn">Mirror: On</button>
+  <label class="btn">Skin <input id="skinPick" type="color" value="#f4c99b"></label>
+</div>
 
-    // Signal Filters
-    const blendshapeFilter = new OneEuroFilterArray(52, 60, 1.0, 0.005);
-    const quatFilterW = new OneEuroFilter(60, 0.5, 0.001);
-    const quatFilterX = new OneEuroFilter(60, 0.5, 0.001);
-    const quatFilterY = new OneEuroFilter(60, 0.5, 0.001);
-    const quatFilterZ = new OneEuroFilter(60, 0.5, 0.001);
+<div id="roadmap">
+  <b>Current prototype:</b> real-time face + 3D head tracking → blendshape extraction → avatar control (browser only).<br/>
+  <b>Next:</b> on-device iQOO inference → Office Kit streaming → Blender/Unity/VTuber output.
+</div>
 
-    let frameCount = 0;
-    let lastFpsCalc = Date.now();
-    let latestLandmarks = null;
-    let latestBlendshapes = null;
-    let expressionGain = 1.0;
-    let trackingState = "IDLE"; // IDLE -> FACE DETECTED -> CALIBRATING -> MOTION READY -> PERSONALIZED -> LIVE
+<script type="module">
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-    async function syncCameraDevicesUI() {
-      const devices = await cameraManager.getAvailableDevices();
-      cameraSelect.innerHTML = '';
+const TRACKED = [
+  "eyeBlinkLeft", "eyeBlinkRight",
+  "eyeWideLeft", "eyeWideRight",
+  "eyeSquintLeft", "eyeSquintRight",
+  "browInnerUp", "browDownLeft", "browDownRight",
+  "jawOpen",
+  "mouthSmileLeft", "mouthSmileRight",
+  "mouthLeft", "mouthRight",
+  "mouthPucker", "mouthFunnel",
+  "cheekPuff",
+  "noseSneerLeft", "noseSneerRight"
+];
 
-      if (devices.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = 'default';
-        opt.textContent = cameraManager.isSyntheticFallback ? 'Synthetic Demo Camera' : 'Default Hardware Camera';
-        cameraSelect.appendChild(opt);
+const barsEl = document.getElementById("bars");
+TRACKED.forEach(name => {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <div class="lbl"><span>${name}</span><span id="val-${name}">0.00</span></div>
+    <div class="bar"><div class="fill" id="fill-${name}"></div></div>`;
+  barsEl.appendChild(row);
+});
+
+const video = document.getElementById("video");
+const dot = document.getElementById("dot");
+const faceStateEl = document.getElementById("faceState");
+const fpsEl = document.getElementById("fps");
+const inferEl = document.getElementById("infer");
+const takeInfoEl = document.getElementById("takeInfo");
+
+let neutral = {};
+let recording = false;
+let playing = false;
+let takeFrames = [];
+let lastTake = null;
+let current = {};
+let smoothed = {};
+let mirrorOn = true;
+let smoothAlpha = 0.35;
+let sessionStart = performance.now();
+let fpsSamples = [];
+
+document.getElementById("smoothSlider").oninput = (e) => {
+  smoothAlpha = parseFloat(e.target.value);
+  document.getElementById("smoothVal").textContent = smoothAlpha.toFixed(2);
+};
+
+document.getElementById("snapshotBtn").onclick = () => {
+  const svg = document.getElementById("faceRig");
+  const serializer = new XMLSerializer();
+  const svgStr = serializer.serializeToString(svg);
+  const svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 420; canvas.height = 420;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#0d0f14";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 60, 60, 300, 300);
+    canvas.toBlob(blob => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `mocaplens_avatar_${Date.now()}.png`;
+      a.click();
+    });
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+};
+
+document.getElementById("playBtn").onclick = () => {
+  if (!lastTake || playing) return;
+  playTake(lastTake);
+};
+
+function playTake(frames) {
+  if (!frames.length) return;
+  playing = true;
+  document.getElementById("playBtn").disabled = true;
+  document.getElementById("recordBtn").disabled = true;
+  const startWall = performance.now();
+  const startFrameT = frames[0].t;
+  let idx = 0;
+
+  function step() {
+    const elapsed = performance.now() - startWall;
+    const targetT = startFrameT + elapsed;
+    while (idx < frames.length - 1 && frames[idx + 1].t <= targetT) idx++;
+
+    applyAvatar(frames[idx].values);
+    updateExpressionLabel(frames[idx].values);
+    faceStateEl.textContent = "playback ▶";
+
+    if (idx >= frames.length - 1 && targetT > frames[frames.length - 1].t) {
+      playing = false;
+      faceStateEl.textContent = "detected ✓";
+      document.getElementById("playBtn").disabled = false;
+      document.getElementById("recordBtn").disabled = false;
+      return;
+    }
+    requestAnimationFrame(step);
+  }
+  step();
+}
+
+function updateExpressionLabel(values) {
+  const smileL = g(values, "mouthSmileLeft");
+  const smileR = g(values, "mouthSmileRight");
+  const blinkL = g(values, "eyeBlinkLeft");
+  const blinkR = g(values, "eyeBlinkRight");
+  const browUp = g(values, "browInnerUp");
+  const browDL = g(values, "browDownLeft");
+  const browDR = g(values, "browDownRight");
+  const jaw = g(values, "jawOpen");
+  const smile = (smileL + smileR) / 2;
+
+  let label = "🙂 Neutral";
+  if ((blinkL > 0.6 && blinkR < 0.3) || (blinkR > 0.6 && blinkL < 0.3)) {
+    label = "😉 Winking";
+  } else if (browUp > 0.5 && jaw > 0.3) {
+    label = "😲 Surprised";
+  } else if (browDL > 0.4 && browDR > 0.4 && smile < 0.2) {
+    label = "😟 Frowning";
+  } else if (smile > 0.45) {
+    label = "😊 Smiling";
+  } else if (blinkL > 0.6 && blinkR > 0.6) {
+    label = "😌 Eyes Closed";
+  }
+  document.getElementById("exprLabel").textContent = label;
+}
+
+document.getElementById("mirrorBtn").onclick = (e) => {
+  mirrorOn = !mirrorOn;
+  video.classList.toggle("mirror", mirrorOn);
+  e.target.textContent = `Mirror: ${mirrorOn ? "On" : "Off"}`;
+};
+
+document.getElementById("skinPick").oninput = (e) => {
+  document.getElementById("skin").setAttribute("fill", e.target.value);
+};
+
+document.getElementById("calibrateBtn").onclick = () => {
+  neutral = { ...current };
+};
+
+document.getElementById("recordBtn").onclick = (e) => {
+  recording = !recording;
+  e.target.classList.toggle("active", recording);
+  e.target.textContent = recording ? "■ Stop" : "● Record Take";
+  if (recording) {
+    takeFrames = [];
+    takeInfoEl.textContent = "";
+  } else if (takeFrames.length) {
+    lastTake = takeFrames;
+    const durSec = ((takeFrames[takeFrames.length - 1].t - takeFrames[0].t) / 1000).toFixed(1);
+    takeInfoEl.textContent = `Take recorded — ${takeFrames.length} frames, ${durSec}s`;
+    document.getElementById("downloadCsvBtn").disabled = false;
+    document.getElementById("downloadJsonBtn").disabled = false;
+    document.getElementById("playBtn").disabled = false;
+  }
+};
+
+document.getElementById("downloadCsvBtn").onclick = () => {
+  if (!lastTake) return;
+  const header = "timestamp," + TRACKED.join(",") + "\n";
+  const rows = lastTake.map(f =>
+    [f.t, ...TRACKED.map(name => (f.values[name] || 0).toFixed(4))].join(",")
+  ).join("\n");
+  downloadBlob(header + rows, "text/csv", `mocaplens_take_${Date.now()}.csv`);
+};
+
+document.getElementById("downloadJsonBtn").onclick = () => {
+  if (!lastTake) return;
+  downloadBlob(JSON.stringify(lastTake, null, 2), "application/json", `mocaplens_take_${Date.now()}.json`);
+};
+
+function downloadBlob(content, type, filename) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function g(values, name) { return values[name] || 0; }
+
+async function setup() {
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+  );
+
+  const faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      delegate: "GPU"
+    },
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: true,
+    runningMode: "VIDEO",
+    numFaces: 1
+  });
+
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  video.srcObject = stream;
+  await new Promise(res => (video.onloadedmetadata = res));
+  video.play();
+  dot.classList.add("live");
+
+  let frameCount = 0;
+  let fpsTimer = performance.now();
+
+  function loop() {
+    const now = performance.now();
+
+    if (!playing && video.readyState >= 2) {
+      const t0 = performance.now();
+      const result = faceLandmarker.detectForVideo(video, now);
+      const inferMs = performance.now() - t0;
+      inferEl.textContent = inferMs.toFixed(1);
+
+      if (result.faceBlendshapes && result.faceBlendshapes.length) {
+        faceStateEl.textContent = "detected ✓";
+        const categories = result.faceBlendshapes[0].categories;
+        const values = {};
+        categories.forEach(c => (values[c.categoryName] = c.score));
+        current = values;
+
+        TRACKED.forEach(name => {
+          const v = g(values, name);
+          document.getElementById(`val-${name}`).textContent = v.toFixed(2);
+          document.getElementById(`fill-${name}`).style.width = `${v * 100}%`;
+          smoothed[name] = smoothed[name] === undefined
+            ? v
+            : smoothed[name] + smoothAlpha * (v - smoothed[name]);
+        });
+
+        applyAvatar(smoothed);
+        updateExpressionLabel(values);
+
+        if (result.facialTransformationMatrixes && result.facialTransformationMatrixes.length) {
+          applyHeadPose(result.facialTransformationMatrixes[0].data);
+        }
+
+        if (recording) {
+          takeFrames.push({ t: Math.round(now), values: { ...values } });
+        }
       } else {
-        devices.forEach((dev, idx) => {
-          const opt = document.createElement('option');
-          opt.value = dev.deviceId;
-          opt.textContent = dev.label || `Camera ${idx + 1} (${dev.deviceId.substring(0, 6)}...)`;
-          if (dev.deviceId === cameraManager.activeDeviceId) {
-            opt.selected = true;
-          }
-          cameraSelect.appendChild(opt);
-        });
-      }
-
-      // Add Synthetic option for manual testing
-      const synthOpt = document.createElement('option');
-      synthOpt.value = 'synthetic';
-      synthOpt.textContent = '⚡ Synthetic Face Feed';
-      if (cameraManager.isSyntheticFallback) synthOpt.selected = true;
-      cameraSelect.appendChild(synthOpt);
-
-      updateCameraStatusUI();
-    }
-
-    function updateCameraStatusUI() {
-      if (camDeviceChip) {
-        const label = cameraManager.isSyntheticFallback ? 'Synthetic Feed' : cameraManager.activeDeviceLabel;
-        const shortLabel = label.length > 16 ? label.substring(0, 14) + '…' : label;
-        camDeviceChip.textContent = shortLabel;
+        faceStateEl.textContent = "searching…";
       }
     }
 
-    window.app = {
-      cameraManager,
-      landmarkerManager,
-      blendshapeProcessor,
-      headPoseSolver,
-      avatarViewer,
-      avatarPersonalizer,
-      timelineRecorder
-    };
+    frameCount++;
+    if (now - fpsTimer > 500) {
+      const fps = Math.round((frameCount * 1000) / (now - fpsTimer));
+      fpsEl.textContent = fps;
+      fpsSamples.push(fps);
+      if (fpsSamples.length > 40) fpsSamples.shift();
+      const avg = fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length;
+      document.getElementById("avgFps").textContent = Math.round(avg);
 
-    async function initStudio() {
-      console.log("MocapLens: Starting non-blocking workstation initialization...");
-      
-      // 1. Initialize Three.js 3D Avatar Render Viewport IMMEDIATELY
-      avatarViewer.initialize();
+      const elapsedSec = Math.floor((now - sessionStart) / 1000);
+      const mm = String(Math.floor(elapsedSec / 60)).padStart(2, "0");
+      const ss = String(elapsedSec % 60).padStart(2, "0");
+      document.getElementById("sessionTime").textContent = `${mm}:${ss}`;
 
-      // 2. Start animation render loop IMMEDIATELY so avatar renders on frame 1
-      requestAnimationFrame(renderLoop);
-
-      // 3. Initialize Camera (Hardware first, with clear status)
-      cameraManager.initializeCamera().then(info => {
-        if (info && info.success) {
-          console.log("MocapLens: Real Hardware Camera feed active ✅");
-          syncCameraDevicesUI();
-        } else {
-          console.warn("MocapLens: Hardware camera not ready:", info ? info.error : "Unknown");
-          acquisitionText.textContent = "Camera access needed — Click 🔄 or check browser permissions";
-          statusDot.style.background = "#ef4444";
-          syncCameraDevicesUI();
-        }
-      });
-
-      // 4. Initialize MediaPipe FaceLandmarker concurrently
-      landmarkerManager.initialize().then(ready => {
-        if (ready) {
-          console.log("MocapLens: MediaPipe FaceLandmarker Task ready ✅");
-        } else {
-          acquisitionText.textContent = "MediaPipe Offline (Local Fallback)";
-        }
-      });
-
-      // Camera Select & Re-sync Handlers
-      cameraSelect.addEventListener('change', async (e) => {
-        const targetId = e.target.value;
-        if (targetId === 'synthetic') {
-          await cameraManager.initializeSyntheticFallback();
-        } else {
-          await cameraManager.switchCamera(targetId);
-        }
-        syncCameraDevicesUI();
-      });
-
-      btnResyncCam.addEventListener('click', async () => {
-        btnResyncCam.style.transform = 'rotate(180deg)';
-        const curId = cameraSelect.value !== 'synthetic' ? cameraSelect.value : null;
-        await cameraManager.initializeCamera(curId);
-        syncCameraDevicesUI();
-        setTimeout(() => { btnResyncCam.style.transform = 'none'; }, 300);
-      });
-
-      // Control Handlers
-      gainSlider.addEventListener('input', (e) => {
-        expressionGain = parseFloat(e.target.value);
-        gainLabel.textContent = `${expressionGain.toFixed(1)}x`;
-        techGainVal.textContent = `${expressionGain.toFixed(1)}x`;
-      });
-
-      modeA3.addEventListener('click', () => setAvatarMode('a3'));
-      modeCyber.addEventListener('click', () => setAvatarMode('cyber'));
-      modeWire.addEventListener('click', () => setAvatarMode('wire'));
-
-      btnCalibrate.addEventListener('click', () => {
-        if (latestBlendshapes) {
-          blendshapeProcessor.calibrateNeutralPose(latestBlendshapes);
-          trackingState = "CALIBRATED";
-          acquisitionText.textContent = "Neutral pose calibrated";
-          statusDot.style.background = "#16a34a";
-        }
-      });
-
-      const updatePersonalizationUI = (m, profileName = "Custom User Likeness") => {
-        const faceW = (m.faceWidth || 1.0).toFixed(2);
-        const faceH = (m.faceHeight || 1.0).toFixed(2);
-        const jawW = (m.jawWidth || 1.0).toFixed(2);
-        const chinP = (m.chinProjection || 1.0).toFixed(2);
-        const eyeS = (m.eyeSpacing || 1.0).toFixed(2);
-        const eyeA = (m.eyeAperture || 1.0).toFixed(2);
-        const noseW = (m.noseWidth || 1.0).toFixed(2);
-        const noseP = (m.noseProjection || 1.0).toFixed(2);
-        const mouthW = (m.mouthWidth || 1.0).toFixed(2);
-        const cheekP = (m.cheekProminence || 1.0).toFixed(2);
-
-        const setProp = (idVal, idBar, val) => {
-          const elVal = document.getElementById(idVal);
-          const elBar = document.getElementById(idBar);
-          if (elVal) elVal.textContent = val;
-          if (elBar) elBar.style.width = `${Math.min(100, Math.max(10, Math.round(parseFloat(val) * 75)))}%`;
-        };
-
-        setProp('val-face-w', 'bar-face-w', faceW);
-        setProp('val-face-h', 'bar-face-h', faceH);
-        setProp('val-jaw-w', 'bar-jaw-w', jawW);
-        setProp('val-chin-p', 'bar-chin-p', chinP);
-        setProp('val-eye-s', 'bar-eye-s', eyeS);
-        setProp('val-eye-a', 'bar-eye-a', eyeA);
-        setProp('val-nose-w', 'bar-nose-w', noseW);
-        setProp('val-nose-p', 'bar-nose-p', noseP);
-        setProp('val-mouth-w', 'bar-mouth-w', mouthW);
-        setProp('val-cheek-p', 'bar-cheek-p', cheekP);
-
-        const shape = m.faceShape || "Oval";
-        acquisitionText.textContent = `Personalized from 10 facial proportions (${shape})`;
-        statusDot.style.background = "#22c55e";
-        updateStepperUI("PERSONALIZED");
-      };
-
-      btnPersonalize.addEventListener('click', () => {
-        if (!latestLandmarks) {
-          acquisitionText.textContent = "Please look at camera so your face can be measured";
-          statusDot.style.background = "#eab308";
-          return;
-        }
-
-        trackingState = "PERSONALIZING";
-        acquisitionText.textContent = "Scanning facial proportions...";
-        statusDot.style.background = "#38bdf8";
-        updateStepperUI("CALIBRATING");
-
-        setTimeout(() => {
-          acquisitionText.textContent = "Measuring 10 anthropometric ratios...";
-          setTimeout(() => {
-            acquisitionText.textContent = "Building personalized 3D avatar...";
-            setTimeout(() => {
-              if (latestLandmarks) {
-                const profile = avatarPersonalizer.extractUserFacialProportions(latestLandmarks, cameraManager.canvas);
-                avatarPersonalizer.applyPersonalizationToAvatar(avatarViewer);
-                trackingState = "PERSONALIZED";
-                updatePersonalizationUI(profile.metrics);
-              }
-            }, 250);
-          }, 250);
-        }, 250);
-      });
-
-      if (btnProfileA) {
-        btnProfileA.addEventListener('click', () => {
-          trackingState = "PERSONALIZED";
-          const m = avatarPersonalizer.applyProfileA(avatarViewer);
-          updatePersonalizationUI(m, "Profile A (Wide)");
-          console.log("MocapLens: Applied Controlled Calibration Profile A (Wide Face) ✅");
-        });
-      }
-
-      if (btnProfileB) {
-        btnProfileB.addEventListener('click', () => {
-          trackingState = "PERSONALIZED";
-          const m = avatarPersonalizer.applyProfileB(avatarViewer);
-          updatePersonalizationUI(m, "Profile B (Narrow)");
-          console.log("MocapLens: Applied Controlled Calibration Profile B (Narrow Face) ✅");
-        });
-      }
-
-      btnRecord.addEventListener('click', () => {
-        if (timelineRecorder.isRecording) {
-          const frames = timelineRecorder.stopRecording();
-          btnRecord.textContent = "Start Capture";
-          btnRecord.classList.remove("m3-button-recording");
-          btnRecord.classList.add("m3-button-primary");
-          acquisitionText.textContent = `Capture finished (${frames.length} frames)`;
-        } else {
-          timelineRecorder.startRecording();
-          btnRecord.textContent = "Stop Capture";
-          btnRecord.classList.remove("m3-button-primary");
-          btnRecord.classList.add("m3-button-recording");
-          acquisitionText.textContent = "Capturing motion take...";
-        }
-      });
-
-      btnReplay.addEventListener('click', () => {
-        if (timelineRecorder.isPlaying) {
-          timelineRecorder.stopPlayback();
-          btnReplay.textContent = "Replay Take";
-          acquisitionText.textContent = "Replay stopped";
-        } else {
-          const ok = timelineRecorder.startPlayback(
-            (blendshapes, quat, trans) => {
-              avatarViewer.updateAvatar(blendshapes, quat, trans);
-              updateTelemetryMeters(blendshapes, quat);
-            },
-            () => {
-              btnReplay.textContent = "Replay Take";
-              acquisitionText.textContent = "Motion replay complete";
-            }
-          );
-          if (ok) {
-            btnReplay.textContent = "Pause Replay";
-            acquisitionText.textContent = "Replaying captured motion track...";
-          }
-        }
-      });
-
-      btnReset.addEventListener('click', () => {
-        timelineRecorder.stopPlayback();
-        if (timelineRecorder.isRecording) timelineRecorder.stopRecording();
-        blendshapeProcessor.resetCalibration();
-        trackingState = "IDLE";
-        acquisitionText.textContent = "Look at camera";
-        camTrackingStatus.textContent = "Searching";
-        statusDot.style.background = "#94a3b8";
-        if (avatarViewer.avatarMesh) {
-          avatarViewer.avatarMesh.scale.set(1.0, 1.0, 1.0);
-        }
-        console.log("MocapLens: Demo state reset.");
-      });
-
-      btnExport.addEventListener('click', () => {
-        timelineRecorder.exportTakeAsJSON();
-      });
-
-      btnTechToggle.addEventListener('click', () => {
-        telemetryDrawer.classList.toggle('open');
-      });
-
-      btnCloseDrawer.addEventListener('click', () => {
-        telemetryDrawer.classList.remove('open');
-      });
+      frameCount = 0;
+      fpsTimer = now;
     }
 
-    function setAvatarMode(mode) {
-      [modeA3, modeCyber, modeWire].forEach(b => b.classList.remove('active'));
-      if (mode === 'a3') {
-        modeA3.classList.add('active');
-        avatarViewer.setAvatarMode('a3');
-      } else if (mode === 'cyber') {
-        modeCyber.classList.add('active');
-        avatarViewer.setAvatarMode('cyber');
-      } else if (mode === 'wire') {
-        modeWire.classList.add('active');
-        avatarViewer.setAvatarMode('wire');
-      }
-    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
 
-    // Telemetry Elements
-    const barJaw = document.getElementById('bar-jaw');
-    const barSmileL = document.getElementById('bar-smile-l');
-    const barSmileR = document.getElementById('bar-smile-r');
-    const barBlinkL = document.getElementById('bar-blink-l');
-    const barBlinkR = document.getElementById('bar-blink-r');
-    const barBrow = document.getElementById('bar-brow');
+function applyHeadPose(data) {
+  // data is a column-major 4x4 matrix from MediaPipe. Use rotation submatrix only.
+  const m = [
+    data[0], data[1], data[2], 0,
+    data[4], data[5], data[6], 0,
+    data[8], data[9], data[10], 0,
+    0, 0, 0, 1
+  ];
+  document.getElementById("faceRig").style.transform = `matrix3d(${m.join(",")})`;
 
-    const valPosePitch = document.getElementById('val-pose-pitch');
-    const valPoseYaw = document.getElementById('val-pose-yaw');
-    const valPoseRoll = document.getElementById('val-pose-roll');
+  const yaw = Math.atan2(data[8], data[0]) * (180 / Math.PI);
+  const pitch = Math.atan2(-data[9], data[10]) * (180 / Math.PI);
+  const roll = Math.atan2(data[1], data[5]) * (180 / Math.PI);
+  document.getElementById("yawVal").textContent = `${yaw.toFixed(0)}°`;
+  document.getElementById("pitchVal").textContent = `${pitch.toFixed(0)}°`;
+  document.getElementById("rollVal").textContent = `${roll.toFixed(0)}°`;
+}
 
-    // Stepper Elements
-    const stepLook = document.getElementById('step-look');
-    const stepFace = document.getElementById('step-face');
-    const stepCalib = document.getElementById('step-calib');
-    const stepPerson = document.getElementById('step-person');
-    const stepLive = document.getElementById('step-live');
+function applyAvatar(values) {
+  const blinkL = g(values, "eyeBlinkLeft");
+  const blinkR = g(values, "eyeBlinkRight");
+  const wideL = g(values, "eyeWideLeft");
+  const wideR = g(values, "eyeWideRight");
+  const browUp = g(values, "browInnerUp");
+  const browDL = g(values, "browDownLeft");
+  const browDR = g(values, "browDownRight");
+  const jaw = g(values, "jawOpen");
+  const smileL = g(values, "mouthSmileLeft");
+  const smileR = g(values, "mouthSmileRight");
+  const mLeft = g(values, "mouthLeft");
+  const mRight = g(values, "mouthRight");
+  const pucker = g(values, "mouthPucker");
+  const funnel = g(values, "mouthFunnel");
+  const cheekPuff = g(values, "cheekPuff");
+  const sneerL = g(values, "noseSneerLeft");
+  const sneerR = g(values, "noseSneerRight");
 
-    function updateStepperUI(stage) {
-      const steps = [stepLook, stepFace, stepCalib, stepPerson, stepLive];
-      steps.forEach(s => {
-        if (s) {
-          s.classList.remove('active');
-          const line = s.querySelector('.step-indicator-line');
-          if (line) line.remove();
-        }
-      });
+  const eyeScaleL = Math.max(0.05, 1 - blinkL + wideL * 0.3);
+  const eyeScaleR = Math.max(0.05, 1 - blinkR + wideR * 0.3);
+  const eyeL = document.getElementById("eyeL");
+  const eyeR = document.getElementById("eyeR");
+  eyeL.style.transform = `scaleY(${eyeScaleL})`;
+  eyeR.style.transform = `scaleY(${eyeScaleR})`;
+  eyeL.style.transformOrigin = "95px 130px";
+  eyeR.style.transformOrigin = "205px 130px";
 
-      let activeStep = stepLook;
-      if (stage === 'FACE_DETECTED') activeStep = stepFace;
-      else if (stage === 'CALIBRATING') activeStep = stepCalib;
-      else if (stage === 'PERSONALIZED') activeStep = stepPerson;
-      else if (stage === 'LIVE') activeStep = stepLive;
+  const browLY = -browUp * 12 + browDL * 8;
+  const browRY = -browUp * 12 + browDR * 8;
+  document.getElementById("browL").style.transform = `translateY(${browLY}px)`;
+  document.getElementById("browR").style.transform = `translateY(${browRY}px)`;
 
-      if (activeStep) {
-        activeStep.classList.add('active');
-        if (!activeStep.querySelector('.step-indicator-line')) {
-          const line = document.createElement('div');
-          line.className = 'step-indicator-line';
-          activeStep.appendChild(line);
-        }
-      }
-    }
+  document.getElementById("cheekL").setAttribute("rx", cheekPuff * 18);
+  document.getElementById("cheekL").setAttribute("ry", cheekPuff * 14);
+  document.getElementById("cheekR").setAttribute("rx", cheekPuff * 18);
+  document.getElementById("cheekR").setAttribute("ry", cheekPuff * 14);
 
-    function updateLiveTelemetryMeters(blendshapes, pose) {
-      if (!blendshapes) return;
+  document.getElementById("noseSneerL").setAttribute("rx", sneerL * 10);
+  document.getElementById("noseSneerL").setAttribute("ry", sneerL * 6);
+  document.getElementById("noseSneerR").setAttribute("rx", sneerR * 10);
+  document.getElementById("noseSneerR").setAttribute("ry", sneerR * 6);
 
-      const jaw = blendshapes[17] || 0;
-      const smileL = blendshapes[23] || 0;
-      const smileR = blendshapes[24] || 0;
-      const blinkL = blendshapes[0] || 0;
-      const blinkR = blendshapes[7] || 0;
-      const brow = blendshapes[43] || 0;
+  const smile = (smileL + smileR) / 2;
+  const shift = (mRight - mLeft) * 20;
+  const openAmt = 8 + jaw * 55;
+  const widthAmt = 40 + smile * 25 - pucker * 20;
 
-      // Update text values
-      if (valJaw) valJaw.textContent = jaw.toFixed(2);
-      if (valSmileL) valSmileL.textContent = smileL.toFixed(2);
-      if (valSmileR) valSmileR.textContent = smileR.toFixed(2);
-      if (valBlinkL) valBlinkL.textContent = blinkL.toFixed(2);
-      if (valBlinkR) valBlinkR.textContent = blinkR.toFixed(2);
-      if (valBrow) valBrow.textContent = brow.toFixed(2);
+  const mouthPath =
+    `M ${-widthAmt + shift} 0 ` +
+    `Q ${shift} ${10 + smile * 12 - pucker * 30 + funnel * 10} ${widthAmt + shift} 0 ` +
+    `Q ${shift} ${openAmt} ${-widthAmt + shift} 0 Z`;
+  document.getElementById("mouth").setAttribute("d", mouthPath);
 
-      // Update progress bar widths
-      if (barJaw) barJaw.style.width = `${Math.min(100, Math.round(jaw * 100))}%`;
-      if (barSmileL) barSmileL.style.width = `${Math.min(100, Math.round(smileL * 100))}%`;
-      if (barSmileR) barSmileR.style.width = `${Math.min(100, Math.round(smileR * 100))}%`;
-      if (barBlinkL) barBlinkL.style.width = `${Math.min(100, Math.round(blinkL * 100))}%`;
-      if (barBlinkR) barBlinkR.style.width = `${Math.min(100, Math.round(blinkR * 100))}%`;
-      if (barBrow) barBrow.style.width = `${Math.min(100, Math.round(brow * 100))}%`;
+  const teeth = document.getElementById("teeth");
+  const tongue = document.getElementById("tongue");
+  teeth.setAttribute("opacity", jaw > 0.25 ? Math.min(1, jaw) : 0);
+  tongue.setAttribute("opacity", jaw > 0.45 ? Math.min(0.9, jaw) : 0);
+  teeth.setAttribute("transform", `translate(${shift},0)`);
+  tongue.setAttribute("transform", `translate(${shift},${jaw * 8})`);
+}
 
-      // Update 6-DoF Pose
-      if (pose && pose.euler) {
-        const radToDeg = 180 / Math.PI;
-        const p = (pose.euler.pitch * radToDeg).toFixed(1);
-        const y = (pose.euler.yaw * radToDeg).toFixed(1);
-        const r = (pose.euler.roll * radToDeg).toFixed(1);
-        if (valPosePitch) valPosePitch.textContent = `${p}°`;
-        if (valPoseYaw) valPoseYaw.textContent = `${y}°`;
-        if (valPoseRoll) valPoseRoll.textContent = `${r}°`;
-      }
-    }
-
-    function renderLoop() {
-      // 1. Draw camera video frame (hardware or synthetic stream)
-      cameraManager.drawFrame();
-
-      // 2. If replay mode is playing, update avatar from recorded track
-      if (timelineRecorder.isPlaying) {
-        frameCount++;
-        const now = Date.now();
-        if (now - lastFpsCalc >= 1000) {
-          statusFps.textContent = `${frameCount} FPS`;
-          frameCount = 0;
-          lastFpsCalc = now;
-        }
-        requestAnimationFrame(renderLoop);
-        return;
-      }
-
-      // 3. Detect facial landmarks
-      const results = landmarkerManager.detectVideoFrame(video, canvas, cameraManager.isSyntheticFallback);
-
-      if (results && results.isFaceDetected && results.faceLandmarks && results.faceLandmarks.length > 0) {
-        const landmarks = results.faceLandmarks[0];
-        latestLandmarks = landmarks;
-
-        if (trackingState !== "PERSONALIZED" && trackingState !== "CALIBRATED") {
-          trackingState = "LIVE";
-          acquisitionText.textContent = "Live Tracking";
-          statusDot.style.background = "#16a34a";
-          updateStepperUI("LIVE");
-        }
-
-        landmarkerManager.drawLandmarks(cameraManager.ctx, landmarks, canvas.width, canvas.height);
-
-        const rawBlendshapes = blendshapeProcessor.processBlendshapes(
-          results.faceBlendshapes ? results.faceBlendshapes[0].categories : null,
-          landmarks
-        );
-        latestBlendshapes = rawBlendshapes;
-
-        const scaledBlendshapes = rawBlendshapes.map(val => Math.min(1.0, val * expressionGain));
-        const smoothedBlendshapes = blendshapeFilter.filter(scaledBlendshapes);
-
-        const pose = headPoseSolver.solvePose(
-          landmarks,
-          results.facialTransformationMatrixes ? results.facialTransformationMatrixes[0].data : null
-        );
-
-        const filteredQuat = [
-          quatFilterW.filter(pose.quaternion[0]),
-          quatFilterX.filter(pose.quaternion[1]),
-          quatFilterY.filter(pose.quaternion[2]),
-          quatFilterZ.filter(pose.quaternion[3])
-        ];
-
-        avatarViewer.updateAvatar(smoothedBlendshapes, filteredQuat, pose.translation);
-        timelineRecorder.recordFrame(smoothedBlendshapes, filteredQuat, pose.translation);
-        updateLiveTelemetryMeters(smoothedBlendshapes, pose);
-
-      } else {
-        // No face detected in frame
-        latestLandmarks = null;
-        const defaultBlendshapes = new Array(52).fill(0.0);
-        avatarViewer.updateAvatar(defaultBlendshapes, [1, 0, 0, 0], [0, 0, 0]);
-
-        if (trackingState !== "IDLE" && trackingState !== "SEARCHING" && !timelineRecorder.isPlaying) {
-          trackingState = "SEARCHING";
-          acquisitionText.textContent = "Look at camera";
-          statusDot.style.background = "#eab308";
-          updateStepperUI("LOOK");
-        }
-      }
-
-      frameCount++;
-      const now = Date.now();
-      if (now - lastFpsCalc >= 1000) {
-        statusFps.textContent = `${frameCount} FPS`;
-        frameCount = 0;
-        lastFpsCalc = now;
-      }
-
-      requestAnimationFrame(renderLoop);
-    }
-
-    window.addEventListener('DOMContentLoaded', initStudio);
-  </script>
+setup().catch(err => {
+  faceStateEl.textContent = "camera/model error";
+  console.error(err);
+  alert("Could not start camera or load the face model. Check camera permission and internet access (model loads from Google's CDN). Details in console.");
+});
+</script>
 </body>
 </html>
